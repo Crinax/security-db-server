@@ -14,6 +14,7 @@ services:
       - 5431:5432
     restart: always
     volumes:
+      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
       - pgdata:/var/lib/postgresql/data
 
 volumes:
