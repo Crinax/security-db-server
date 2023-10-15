@@ -1,6 +1,15 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    files (uid) {
+        uid -> Uuid,
+        #[max_length = 36]
+        file_name -> Bpchar,
+        original_name -> Varchar,
+    }
+}
+
+diesel::table! {
     law_profiles (uid) {
         uid -> Uuid,
         #[max_length = 15]
@@ -25,6 +34,7 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
+    files,
     law_profiles,
     passports,
 );
