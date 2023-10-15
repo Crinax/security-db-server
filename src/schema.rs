@@ -33,8 +33,24 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    user_profiles (uid) {
+        uid -> Uuid,
+        passport_uid -> Nullable<Uuid>,
+        law_profile -> Nullable<Uuid>,
+        avatar_uid -> Nullable<Uuid>,
+        role -> Int2,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::joinable!(user_profiles -> files (avatar_uid));
+diesel::joinable!(user_profiles -> law_profiles (law_profile));
+diesel::joinable!(user_profiles -> passports (passport_uid));
+
 diesel::allow_tables_to_appear_in_same_query!(
     files,
     law_profiles,
     passports,
+    user_profiles,
 );
