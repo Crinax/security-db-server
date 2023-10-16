@@ -1,6 +1,17 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    chats (uid) {
+        uid -> Uuid,
+        creator_uid -> Uuid,
+        #[max_length = 255]
+        name -> Varchar,
+        #[max_length = 64]
+        connection_hash -> Varchar,
+    }
+}
+
+diesel::table! {
     files (uid) {
         uid -> Uuid,
         #[max_length = 36]
@@ -44,11 +55,13 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(chats -> user_profiles (creator_uid));
 diesel::joinable!(user_profiles -> files (avatar_uid));
 diesel::joinable!(user_profiles -> law_profiles (law_profile));
 diesel::joinable!(user_profiles -> passports (passport_uid));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    chats,
     files,
     law_profiles,
     passports,
