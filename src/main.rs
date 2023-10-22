@@ -1,4 +1,5 @@
 mod api;
+mod db;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use actix_web::{HttpServer, App, middleware::Logger};
