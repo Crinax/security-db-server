@@ -12,6 +12,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    court_cases (uid) {
+        uid -> Uuid,
+        #[max_length = 50]
+        number -> Varchar,
+        #[max_length = 255]
+        judge_fullname -> Varchar,
+        decision -> Int2,
+        kind -> Int2,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     files (uid) {
         uid -> Uuid,
         #[max_length = 36]
@@ -83,6 +96,7 @@ diesel::joinable!(user_profiles -> passports (passport_uid));
 
 diesel::allow_tables_to_appear_in_same_query!(
     chats,
+    court_cases,
     files,
     law_profiles,
     message_files,
