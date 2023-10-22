@@ -1,5 +1,11 @@
 // @generated automatically by Diesel CLI.
 
+pub mod sql_types {
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "user_profiles_roles"))]
+    pub struct UserProfilesRoles;
+}
+
 diesel::table! {
     chats (uid) {
         uid -> Uuid,
@@ -75,12 +81,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::UserProfilesRoles;
+
     user_profiles (uid) {
         uid -> Uuid,
         passport_uid -> Nullable<Uuid>,
         law_profile -> Nullable<Uuid>,
         avatar_uid -> Nullable<Uuid>,
-        role -> Int2,
+        role -> UserProfilesRoles,
         created_at -> Timestamp,
     }
 }
