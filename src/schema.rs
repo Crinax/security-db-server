@@ -93,6 +93,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    services (uid) {
+        uid -> Uuid,
+        law_uid -> Uuid,
+        #[max_length = 255]
+        name -> Varchar,
+        cost -> Float8,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::UserProfilesRoles;
 
@@ -111,6 +121,7 @@ diesel::joinable!(message_files -> files (file_uid));
 diesel::joinable!(message_files -> messages (message_uid));
 diesel::joinable!(messages -> chats (chat_uid));
 diesel::joinable!(messages -> user_profiles (sender_uid));
+diesel::joinable!(services -> user_profiles (law_uid));
 diesel::joinable!(user_profiles -> files (avatar_uid));
 diesel::joinable!(user_profiles -> law_profiles (law_profile));
 diesel::joinable!(user_profiles -> passports (passport_uid));
@@ -123,5 +134,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     message_files,
     messages,
     passports,
+    services,
     user_profiles,
 );
