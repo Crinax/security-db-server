@@ -30,6 +30,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    message_files (uid) {
+        uid -> Uuid,
+        message_uid -> Uuid,
+        file_uid -> Uuid,
+    }
+}
+
+diesel::table! {
     messages (uid) {
         uid -> Uuid,
         chat_uid -> Uuid,
@@ -65,6 +73,8 @@ diesel::table! {
 }
 
 diesel::joinable!(chats -> user_profiles (creator_uid));
+diesel::joinable!(message_files -> files (file_uid));
+diesel::joinable!(message_files -> messages (message_uid));
 diesel::joinable!(messages -> chats (chat_uid));
 diesel::joinable!(messages -> user_profiles (sender_uid));
 diesel::joinable!(user_profiles -> files (avatar_uid));
@@ -75,6 +85,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     chats,
     files,
     law_profiles,
+    message_files,
     messages,
     passports,
     user_profiles,
