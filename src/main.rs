@@ -7,7 +7,7 @@ use dotenvy::dotenv;
 use std::env;
 use env_logger::Env;
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/db/migrations");
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
