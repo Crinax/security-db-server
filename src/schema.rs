@@ -18,6 +18,10 @@ pub mod sql_types {
     pub struct CourtSidesKinds;
 
     #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "law_transactions_statues"))]
+    pub struct LawTransactionsStatues;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "user_profiles_roles"))]
     pub struct UserProfilesRoles;
 }
@@ -83,6 +87,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::LawTransactionsStatues;
+
+    law_transactions (uid) {
+        uid -> Uuid,
+        court_case_uid -> Nullable<Uuid>,
+        client_uid -> Nullable<Uuid>,
+        status -> LawTransactionsStatues,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     message_files (uid) {
         uid -> Uuid,
         message_uid -> Uuid,
@@ -141,6 +158,8 @@ diesel::table! {
 diesel::joinable!(chats -> user_profiles (creator_uid));
 diesel::joinable!(court_sides -> court_cases (court_case_uid));
 diesel::joinable!(court_sides -> user_profiles (user_uid));
+diesel::joinable!(law_transactions -> court_cases (court_case_uid));
+diesel::joinable!(law_transactions -> user_profiles (client_uid));
 diesel::joinable!(message_files -> files (file_uid));
 diesel::joinable!(message_files -> messages (message_uid));
 diesel::joinable!(messages -> chats (chat_uid));
@@ -156,6 +175,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     court_sides,
     files,
     law_profiles,
+    law_transactions,
     message_files,
     messages,
     passports,
