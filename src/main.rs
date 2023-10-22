@@ -1,11 +1,12 @@
 mod api;
 mod db;
+mod config;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use actix_web::{HttpServer, App, middleware::Logger};
 use dotenvy::dotenv;
-use std::env;
 use env_logger::Env;
+use config::Config;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/db/migrations");
 
@@ -13,7 +14,7 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/db/migrations"
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let config = Config::default();
 
     // connection.run_pending_migrations(MIGRATIONS)?;
 
@@ -24,7 +25,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(api::make_service())
     }) 
-    .bind(("127.0.0.1", 7878))?
+    .bind(config.get_address())?
     .run()
     .await
 }
