@@ -2,6 +2,10 @@
 
 pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "court_cases_decisions"))]
+    pub struct CourtCasesDecisions;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "user_profiles_roles"))]
     pub struct UserProfilesRoles;
 }
@@ -18,13 +22,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::CourtCasesDecisions;
+
     court_cases (uid) {
         uid -> Uuid,
         #[max_length = 50]
         number -> Varchar,
         #[max_length = 255]
         judge_fullname -> Varchar,
-        decision -> Int2,
+        decision -> CourtCasesDecisions,
         kind -> Int2,
         created_at -> Timestamp,
     }
