@@ -1,8 +1,6 @@
-use std::net::{SocketAddr, IpAddr};
-use std::str::FromStr;
 use std::env;
 
-use crate::db::DbUrlProvider;
+use super::db::DbUrlProvider;
 
 pub struct Config {
     db_url: String,
@@ -17,10 +15,6 @@ impl Config {
 
     pub fn port(&self) -> u16 {
         self.port
-    }
-
-    pub fn get_address(&self) -> SocketAddr {
-        SocketAddr::new(IpAddr::from_str(self.host()).unwrap(), self.port())
     }
 }
 
