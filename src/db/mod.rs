@@ -1,9 +1,10 @@
+pub mod orm;
+pub mod models;
+
 use diesel::{r2d2::{Pool, ConnectionManager}, PgConnection};
 use diesel_migrations::{MigrationHarness, EmbeddedMigrations};
 
 use crate::accessors::{DbProvider, DbError};
-
-pub mod orm;
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
