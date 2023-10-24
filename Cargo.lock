@@ -1136,6 +1136,7 @@ dependencies = [
  "diesel_migrations",
  "dotenvy",
  "env_logger",
+ "log",
  "uuid",
 ]
 

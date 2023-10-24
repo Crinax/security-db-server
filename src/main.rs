@@ -26,10 +26,12 @@ async fn main() -> std::io::Result<()> {
     let config = Arc::new(Config::default());
     let db = Arc::new(Db::new(config.db_url()).expect("Db instance error"));
 
-    println!("Migrating...");
+    log::info!("Running migrations...");
 
     db.migrate(MIGRATIONS).expect("Error while migration");
     let data = web::Data::new(AppState::new(db));
+
+    log::info!("Starting server at {}:{}", config.host(), config.port());
 
     HttpServer::new(move || {
         let clonned = data.clone();
