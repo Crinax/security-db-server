@@ -1,6 +1,6 @@
 use std::env;
 
-use super::db::DbUrlProvider;
+use super::accessors::DbUrlProvider;
 
 pub struct Config {
     db_url: String,
