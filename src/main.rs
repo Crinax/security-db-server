@@ -37,7 +37,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(clonned)
             .wrap(Logger::default())
-            .service(api::make_service())
+            .service(api::build_scope())
     }) 
     .bind((config.host(), config.port()))?
     .run()
