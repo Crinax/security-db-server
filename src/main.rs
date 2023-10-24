@@ -24,8 +24,7 @@ async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     let config = Arc::new(Config::default());
-    let clonned_config = config.clone();
-    let db = Arc::new(Db::new(clonned_config.db_url()).expect("Db instance error"));
+    let db = Arc::new(Db::new(config.db_url()).expect("Db instance error"));
 
     println!("Migrating...");
 
