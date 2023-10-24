@@ -18,7 +18,7 @@ impl Db {
             return Ok(Self { pool });
         }
 
-        Err(DbError::InstanceError)
+        Err(DbError::Instance)
     }
 }
 
@@ -27,9 +27,9 @@ impl DbProvider<PgPool, PgConnection> for Db {
         match self.pool.get() {
             Ok(mut connection) => match clojure(&mut connection) {
                 Ok(result) => Ok(result),
-                Err(err) => Err(DbError::ExecutionError(err))
+                Err(err) => Err(DbError::Execution(err))
             }
-            Err(_) => Err(DbError::ConnectionError)
+            Err(_) => Err(DbError::Connection)
         }
     }
 
@@ -37,9 +37,9 @@ impl DbProvider<PgPool, PgConnection> for Db {
         match self.pool.get() {
             Ok(mut connection) => match connection.run_pending_migrations(migrations) {
                 Ok(_) => Ok(()),
-                Err(_) => Err(DbError::MigrationError)
+                Err(_) => Err(DbError::Migration)
             },
-            Err(_) => Err(DbError::ConnectionError)
+            Err(_) => Err(DbError::Connection)
         }
     }
 }

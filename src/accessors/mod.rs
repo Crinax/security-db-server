@@ -10,10 +10,10 @@ pub trait DbErrorProvider {
 
 #[derive(Debug)]
 pub enum DbError<T> {
-    InstanceError,
-    ConnectionError,
-    ExecutionError(T),
-    MigrationError,
+    Instance,
+    Connection,
+    Execution(T),
+    Migration,
 }
 
 pub trait DbProvider<Pool, Connection> {
