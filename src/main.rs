@@ -15,6 +15,7 @@ use db::Db;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use env_logger::Env;
 use state::AppState;
+use api::{ApiScope, ScopeBuilder};
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/db/migrations");
 
@@ -38,7 +39,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(clonned)
             .wrap(Logger::default())
-            .service(api::build_scope())
+            .service(ApiScope::build_scope())
     })
     .bind((config.host(), config.port()))?
     .run()
