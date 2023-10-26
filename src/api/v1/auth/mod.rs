@@ -8,5 +8,6 @@ pub(super) struct AuthScope;
 impl ScopeBuilder for AuthScope {
     fn build_scope() -> Scope {
         web::scope("/auth")
+            .service(post::pass_authorization)
     }
 }
