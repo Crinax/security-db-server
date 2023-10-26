@@ -27,6 +27,19 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    auth_data (uid) {
+        uid -> Uuid,
+        profile_uid -> Nullable<Uuid>,
+        #[max_length = 255]
+        email -> Varchar,
+        #[max_length = 255]
+        username -> Varchar,
+        #[max_length = 32]
+        password -> Varchar,
+    }
+}
+
+diesel::table! {
     chats (uid) {
         uid -> Uuid,
         creator_uid -> Uuid,
@@ -155,6 +168,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(auth_data -> user_profiles (profile_uid));
 diesel::joinable!(chats -> user_profiles (creator_uid));
 diesel::joinable!(court_sides -> court_cases (court_case_uid));
 diesel::joinable!(court_sides -> user_profiles (user_uid));
@@ -170,6 +184,7 @@ diesel::joinable!(user_profiles -> law_profiles (law_profile));
 diesel::joinable!(user_profiles -> passports (passport_uid));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    auth_data,
     chats,
     court_cases,
     court_sides,
