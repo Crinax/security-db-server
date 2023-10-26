@@ -1,8 +1,7 @@
-mod laws;
-mod auth;
+mod get;
 
 use actix_web::{web, Scope};
 
 pub(super) fn build_scope() -> Scope {
-    web::scope("/v1").service(laws::build_scope())
+    web::scope("/laws").service(get::get_laws)
 }
