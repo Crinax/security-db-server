@@ -3,9 +3,9 @@ use diesel::prelude::*;
 use uuid::Uuid;
 
 use super::custom_types::user_profile_roles::UserProfilesRoles;
-use super::passports::Passport;
 use super::files::File;
 use super::law_profiles::LawProfile;
+use super::passports::Passport;
 
 #[derive(Queryable, Associations, Selectable, Identifiable, Debug)]
 #[diesel(belongs_to(Passport, foreign_key = passport_uid))]

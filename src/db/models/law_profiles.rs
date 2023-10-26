@@ -9,5 +9,5 @@ use uuid::Uuid;
 pub struct LawProfile {
     pub uid: Uuid,
     pub itn: String,
-    pub start_activity_date: NaiveDateTime
+    pub start_activity_date: NaiveDateTime,
 }

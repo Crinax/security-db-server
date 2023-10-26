@@ -1,15 +1,18 @@
-pub mod orm;
 pub mod models;
+pub mod orm;
 
-use diesel::{r2d2::{Pool, ConnectionManager}, PgConnection};
-use diesel_migrations::{MigrationHarness, EmbeddedMigrations};
+use diesel::{
+    r2d2::{ConnectionManager, Pool},
+    PgConnection,
+};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 
-use crate::accessors::{DbProvider, DbError};
+use crate::accessors::{DbError, DbProvider};
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
 pub struct Db {
-    pool: PgPool
+    pool: PgPool,
 }
 
 impl Db {
@@ -24,13 +27,16 @@ impl Db {
 }
 
 impl DbProvider<PgPool, PgConnection> for Db {
-    fn apply<T, E>(&self, clojure: impl Fn(&mut PgConnection) -> Result<T, E>) -> Result<T, DbError<E>> {
+    fn apply<T, E>(
+        &self,
+        clojure: impl Fn(&mut PgConnection) -> Result<T, E>,
+    ) -> Result<T, DbError<E>> {
         match self.pool.get() {
             Ok(mut connection) => match clojure(&mut connection) {
                 Ok(result) => Ok(result),
-                Err(err) => Err(DbError::Execution(err))
-            }
-            Err(_) => Err(DbError::Connection)
+                Err(err) => Err(DbError::Execution(err)),
+            },
+            Err(_) => Err(DbError::Connection),
         }
     }
 
@@ -38,9 +44,9 @@ impl DbProvider<PgPool, PgConnection> for Db {
         match self.pool.get() {
             Ok(mut connection) => match connection.run_pending_migrations(migrations) {
                 Ok(_) => Ok(()),
-                Err(_) => Err(DbError::Migration)
+                Err(_) => Err(DbError::Migration),
             },
-            Err(_) => Err(DbError::Connection)
+            Err(_) => Err(DbError::Connection),
         }
     }
 }

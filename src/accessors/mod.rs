@@ -17,6 +17,9 @@ pub enum DbError<T> {
 }
 
 pub trait DbProvider<Pool, Connection> {
-    fn apply<T, E>(&self, clojure: impl Fn(&mut Connection) -> Result<T, E>) -> Result<T, DbError<E>>;
+    fn apply<T, E>(
+        &self,
+        clojure: impl Fn(&mut Connection) -> Result<T, E>,
+    ) -> Result<T, DbError<E>>;
     fn migrate(&self, migraitons: EmbeddedMigrations) -> Result<(), DbError<()>>;
 }

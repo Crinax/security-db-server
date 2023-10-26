@@ -1,19 +1,19 @@
-mod api;
-mod db;
-mod config;
 mod accessors;
+mod api;
+mod config;
+mod db;
 mod state;
 
 use std::sync::Arc;
 
 use dotenvy::dotenv;
 
-use diesel_migrations::{embed_migrations, EmbeddedMigrations};
-use actix_web::{HttpServer, middleware::Logger, web, App};
-use env_logger::Env;
+use accessors::{DbProvider, DbUrlProvider};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use config::Config;
 use db::Db;
-use accessors::{DbUrlProvider, DbProvider};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+use env_logger::Env;
 use state::AppState;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/db/migrations");
@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(clonned)
             .wrap(Logger::default())
             .service(api::build_scope())
-    }) 
+    })
     .bind((config.host(), config.port()))?
     .run()
     .await

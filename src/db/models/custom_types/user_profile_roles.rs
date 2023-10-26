@@ -1,19 +1,10 @@
 use std::io::Write;
 
 use diesel::{
+    deserialize::{self, FromSql, FromSqlRow},
     expression::AsExpression,
-    deserialize::{
-        FromSqlRow,
-        self,
-        FromSql
-    },
-    pg::{PgValue, Pg},
-    serialize::{
-        self,
-        Output,
-        ToSql,
-        IsNull
-    }
+    pg::{Pg, PgValue},
+    serialize::{self, IsNull, Output, ToSql},
 };
 
 #[derive(Debug, AsExpression, FromSqlRow)]
@@ -22,9 +13,8 @@ pub enum UserProfilesRoles {
     User,
     Employee,
     Law,
-    Admin
+    Admin,
 }
-
 
 impl ToSql<crate::db::orm::schema::sql_types::UserProfilesRoles, Pg> for UserProfilesRoles {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {

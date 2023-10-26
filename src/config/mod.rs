@@ -5,7 +5,7 @@ use super::accessors::DbUrlProvider;
 pub struct Config {
     db_url: String,
     host: String,
-    port: u16
+    port: u16,
 }
 
 impl Config {
@@ -29,7 +29,9 @@ impl Default for Config {
         Self {
             db_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
             host: env::var("HOST").unwrap_or("127.0.0.1".into()),
-            port: env::var("PORT").map(|e| e.parse().unwrap_or(7878)).unwrap_or(7878)
+            port: env::var("PORT")
+                .map(|e| e.parse().unwrap_or(7878))
+                .unwrap_or(7878),
         }
     }
 }

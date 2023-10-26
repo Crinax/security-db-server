@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use diesel::PgConnection;
 use super::db::PgPool;
+use diesel::PgConnection;
 
 use crate::accessors::DbProvider;
 
 pub struct AppState<T> {
-    db: Arc<T>
+    db: Arc<T>,
 }
 
 impl<T: DbProvider<PgPool, PgConnection>> AppState<T> {
