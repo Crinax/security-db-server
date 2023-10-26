@@ -136,10 +136,10 @@ diesel::table! {
         second_name -> Varchar,
         patronymic -> Nullable<Varchar>,
         #[max_length = 6]
-        number -> Bpchar,
+        number -> Nullable<Bpchar>,
         #[max_length = 4]
-        series -> Bpchar,
-        registration_place -> Varchar,
+        series -> Nullable<Bpchar>,
+        registration_place -> Nullable<Varchar>,
         birthday_date -> Date,
     }
 }
