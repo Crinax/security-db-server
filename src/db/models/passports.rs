@@ -10,8 +10,8 @@ pub struct Passport {
     pub first_name: String,
     pub second_name: String,
     pub patronymic: Option<String>,
-    pub number: String,
-    pub series: String,
-    pub registration_place: String,
+    pub number: Option<String>,
+    pub series: Option<String>,
+    pub registration_place: Option<String>,
     pub birthday_date: NaiveDate,
 }
