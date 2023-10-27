@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::db::PgPool;
 use diesel::PgConnection;
 
-use crate::accessors::DbProvider;
+use crate::db::DbProvider;
 
 pub struct AppState<T> {
     db: Arc<T>,

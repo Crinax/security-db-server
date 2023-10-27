@@ -7,12 +7,34 @@ use diesel::{
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 
-use crate::accessors::{DbError, DbProvider};
-
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
 pub struct Db {
     pool: PgPool,
+}
+
+pub trait DbUrlProvider {
+    fn db_url(&self) -> &str;
+}
+
+pub trait DbErrorProvider {
+    fn as_text(&self) -> &str;
+}
+
+#[derive(Debug)]
+pub enum DbError<T> {
+    Instance,
+    Connection,
+    Execution(T),
+    Migration,
+}
+
+pub trait DbProvider<Pool, Connection> {
+    fn apply<T, E>(
+        &self,
+        clojure: impl Fn(&mut Connection) -> Result<T, E>,
+    ) -> Result<T, DbError<E>>;
+    fn migrate(&self, migraitons: EmbeddedMigrations) -> Result<(), DbError<()>>;
 }
 
 impl Db {

@@ -1,4 +1,3 @@
-mod accessors;
 mod api;
 mod config;
 mod db;
@@ -9,10 +8,9 @@ use std::sync::Arc;
 
 use dotenvy::dotenv;
 
-use accessors::{DbProvider, DbUrlProvider};
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use config::Config;
-use db::Db;
+use db::{Db, DbProvider, DbUrlProvider};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use env_logger::Env;
 use state::AppState;
