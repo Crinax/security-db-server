@@ -3,7 +3,6 @@ mod config;
 mod db;
 mod state;
 mod services;
-mod validators;
 
 use std::sync::Arc;
 
