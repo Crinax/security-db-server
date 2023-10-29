@@ -32,7 +32,6 @@ async fn main() -> std::io::Result<()> {
     let data = web::Data::new(AppState::new(db));
     let json_cfg = web::JsonConfig::default()
         .limit(4096)
-        .content_type(|mime| mime == "text/plain")
         .error_handler(|err, _req| {
             error::InternalError::from_response(
                 err,
