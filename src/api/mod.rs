@@ -1,3 +1,4 @@
+pub mod errors;
 mod v1;
 
 use actix_web::{web, Scope};
