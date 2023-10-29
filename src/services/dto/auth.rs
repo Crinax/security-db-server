@@ -11,4 +11,9 @@ pub struct RegistrationDto {
 
     #[validate(length(min = 8, max = 32))]
     pub password: String,
+
+    pub first_name: String,
+    pub second_name: String,
+    pub patronymic: Option<String>,
+    pub birth_date: chrono::NaiveDate,
 }

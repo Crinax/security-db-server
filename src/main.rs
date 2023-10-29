@@ -33,6 +33,7 @@ async fn main() -> std::io::Result<()> {
     let json_cfg = web::JsonConfig::default()
         .limit(4096)
         .error_handler(|err, _req| {
+            log::error!("{:?}", err);
             error::InternalError::from_response(
                 err,
                 invalid_data().into()
