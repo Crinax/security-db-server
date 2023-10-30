@@ -1,7 +1,7 @@
 mod get;
 
-use actix_web::{web, Scope};
 use super::ScopeBuilder;
+use actix_web::{web, Scope};
 
 pub(super) struct LawsScope;
 

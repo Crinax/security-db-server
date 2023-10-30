@@ -1,5 +1,5 @@
-mod laws;
 mod auth;
+mod laws;
 
 use actix_web::{web, Scope};
 

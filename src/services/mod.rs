@@ -1,2 +1,2 @@
-pub mod dto;
 pub mod auth;
+pub mod dto;

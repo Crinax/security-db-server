@@ -1,16 +1,11 @@
+use crate::db::{
+    models::custom_types::user_profile_roles::UserProfilesRoles, orm::schema::auth_data,
+    orm::schema::passports, orm::schema::user_profiles, Db, DbError, DbProvider,
+};
+use argon2::{self, Config};
+use diesel::insert_into;
 use diesel::prelude::*;
 use uuid::Uuid;
-use crate::db::{
-    orm::schema::auth_data,
-    orm::schema::user_profiles,
-    orm::schema::passports,
-    Db,
-    DbProvider,
-    DbError,
-    models::custom_types::user_profile_roles::UserProfilesRoles
-};
-use diesel::insert_into;
-use argon2::{self, Config};
 
 use super::dto::auth::RegistrationDto;
 
@@ -33,7 +28,7 @@ pub struct AuthOrmDto {
 #[diesel(table_name = user_profiles)]
 pub struct ProfileOrmDto {
     passport_uid: Option<Uuid>,
-    role: UserProfilesRoles
+    role: UserProfilesRoles,
 }
 
 #[derive(Insertable)]
@@ -71,12 +66,11 @@ pub fn register(db: &Db, data: RegistrationDto) -> Result<(), RegisterError> {
                 log::error!("{:?}", err);
                 RegisterError::Insertion
             })?;
-        
 
         let profile_uid: Vec<Uuid> = insert_into(user_profiles::dsl::user_profiles)
             .values(&ProfileOrmDto {
                 role: UserProfilesRoles::User,
-                passport_uid: passport_uid.get(0).copied()
+                passport_uid: passport_uid.get(0).copied(),
             })
             .returning(user_profiles::dsl::uid)
             .get_results(conn)
@@ -100,9 +94,10 @@ pub fn register(db: &Db, data: RegistrationDto) -> Result<(), RegisterError> {
                 log::error!("{:?}", err);
                 RegisterError::Insertion
             })
-    }).map_err(|err| match err {
+    })
+    .map_err(|err| match err {
         DbError::Connection => RegisterError::Inavailable,
         DbError::Execution(err) => err,
-        _ => unreachable!()
+        _ => unreachable!(),
     })
 }

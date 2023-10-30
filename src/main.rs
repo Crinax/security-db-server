@@ -1,20 +1,20 @@
 mod api;
 mod config;
 mod db;
-mod state;
 mod services;
+mod state;
 
 use std::sync::Arc;
 
 use dotenvy::dotenv;
 
-use actix_web::{middleware::Logger, web, App, HttpServer, error};
+use actix_web::{error, middleware::Logger, web, App, HttpServer};
+use api::{errors::invalid_data, ApiScope, ScopeBuilder};
 use config::Config;
 use db::{Db, DbProvider, DbUrlProvider};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use env_logger::Env;
 use state::AppState;
-use api::{ApiScope, ScopeBuilder, errors::invalid_data};
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/db/migrations");
 
@@ -34,10 +34,7 @@ async fn main() -> std::io::Result<()> {
         .limit(4096)
         .error_handler(|err, _req| {
             log::error!("{:?}", err);
-            error::InternalError::from_response(
-                err,
-                invalid_data().into()
-            ).into()
+            error::InternalError::from_response(err, invalid_data().into()).into()
         });
 
     log::info!("Starting server at {}:{}", config.host(), config.port());
