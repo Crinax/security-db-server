@@ -17,14 +17,7 @@ docker-compose up
 ```
 
 5. Убеждаемся, что всё запустилось (может упасть, если порты заняты, в этом случае их нужно либо освободить, либо `docker-compose.yml` подредачить)
-6. Создаём файл `.env`
-
-```sh
-DATABASE_URL=postgres://{username}:{password}@{host}:{port}/{db-name}
-```
-
-Вместо username, password, host, port, db-name подставить свои данные
-
+6. Создаём файл `.env` по примуру `.env.example`
 7. Далее необходимо иницализировать Diesel
 
 ```sh
