@@ -16,5 +16,15 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  redis:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly
+    restart: always
+    ports:
+      - ${REDIS_PORTS}
+    volumes:
+      - redis_data:/data
+
 volumes:
   pgdata:
+
+  redis_data:
