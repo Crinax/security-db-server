@@ -27,14 +27,25 @@ pub enum DbError<T> {
     Connection,
     Execution(T),
     Migration,
+    OrmError(diesel::result::Error),
+}
+
+impl<T> From<diesel::result::Error> for DbError<T> {
+    fn from(value: diesel::result::Error) -> Self {
+        Self::OrmError(value)
+    }
 }
 
 pub trait DbProvider<Pool, Connection> {
-    fn apply<T, E>(
+    fn apply<T, E: std::fmt::Debug>(
         &self,
         clojure: impl Fn(&mut Connection) -> Result<T, E>,
     ) -> Result<T, DbError<E>>;
     fn migrate(&self, migraitons: EmbeddedMigrations) -> Result<(), DbError<()>>;
+    fn transaction<T, E: std::fmt::Debug>(
+        &self,
+        clojure: impl Fn(&mut Connection) -> Result<T, E>,
+    ) -> Result<T, DbError<E>>;
 }
 
 impl Db {
@@ -49,16 +60,22 @@ impl Db {
 }
 
 impl DbProvider<PgPool, PgConnection> for Db {
-    fn apply<T, E>(
+    fn apply<T, E: std::fmt::Debug>(
         &self,
         clojure: impl Fn(&mut PgConnection) -> Result<T, E>,
     ) -> Result<T, DbError<E>> {
         match self.pool.get() {
             Ok(mut connection) => match clojure(&mut connection) {
                 Ok(result) => Ok(result),
-                Err(err) => Err(DbError::Execution(err)),
+                Err(err) => {
+                    log::error!("{:?}", err);
+                    Err(DbError::Execution(err))
+                }
             },
-            Err(_) => Err(DbError::Connection),
+            Err(err) => {
+                log::error!("{:?}", err);
+                Err(DbError::Connection)
+            }
         }
     }
 
@@ -66,9 +83,37 @@ impl DbProvider<PgPool, PgConnection> for Db {
         match self.pool.get() {
             Ok(mut connection) => match connection.run_pending_migrations(migrations) {
                 Ok(_) => Ok(()),
-                Err(_) => Err(DbError::Migration),
+                Err(err) => {
+                    log::error!("{:?}", err);
+                    Err(DbError::Migration)
+                }
             },
-            Err(_) => Err(DbError::Connection),
+            Err(err) => {
+                log::error!("{:?}", err);
+                Err(DbError::Connection)
+            }
         }
+    }
+
+    fn transaction<T, E: std::fmt::Debug>(
+        &self,
+        clojure: impl Fn(&mut PgConnection) -> Result<T, E>,
+    ) -> Result<T, DbError<E>> {
+        self.apply(|conn| {
+            let clojure_once = |conn: &mut PgConnection| match clojure(conn) {
+                Ok(res) => Ok(res),
+                Err(err) => {
+                    log::error!("{:?}", err);
+                    Err(DbError::Execution(err))
+                }
+            };
+            conn.build_transaction().read_write().run(clojure_once)
+        })
+        .map_err(|err| match err {
+            DbError::Execution(err) => err,
+            DbError::Connection => DbError::Connection,
+            DbError::OrmError(err) => DbError::OrmError(err),
+            _ => unreachable!(),
+        })
     }
 }

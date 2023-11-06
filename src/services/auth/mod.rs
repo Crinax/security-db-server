@@ -1,103 +1,94 @@
-use crate::db::{
-    models::custom_types::user_profile_roles::UserProfilesRoles, orm::schema::auth_data,
-    orm::schema::passports, orm::schema::user_profiles, Db, DbError, DbProvider,
-};
+use std::sync::Arc;
+
+use crate::db::{orm::schema::auth_data, Db, DbError, DbProvider};
 use argon2::{self, Config};
 use diesel::insert_into;
 use diesel::prelude::*;
 use uuid::Uuid;
 
-use super::dto::auth::RegistrationDto;
+use super::{
+    dto::{auth::RegistrationDto, user::PassportOrmData},
+    user::{UserService, UserServiceError},
+};
 
-pub enum RegisterError {
-    Insertion,
-    Inavailable,
-    Cipher,
+#[derive(Debug)]
+pub enum AuthServiceError<T> {
+    AuthDataCreation(T),
+    HashPassword,
+    ProfileCreation,
+    PassportCreation,
 }
 
-#[derive(Insertable, Clone)]
-#[diesel(table_name = auth_data)]
-pub struct AuthOrmDto {
-    username: String,
-    password: String,
-    email: String,
-    pub profile_uid: Option<Uuid>,
+pub trait SaltProvider {
+    fn salt(&self) -> &[u8];
 }
 
-#[derive(Insertable)]
-#[diesel(table_name = user_profiles)]
-pub struct ProfileOrmDto {
-    passport_uid: Option<Uuid>,
-    role: UserProfilesRoles,
+pub struct AuthService {
+    db: Arc<Db>,
 }
 
-#[derive(Insertable)]
-#[diesel(table_name = passports)]
-pub struct PassportOrmData {
-    first_name: String,
-    second_name: String,
-    patronymic: Option<String>,
-    birthday_date: chrono::NaiveDate,
-}
+impl AuthService {
+    pub fn new(db: Arc<Db>) -> Self {
+        Self { db }
+    }
 
-pub fn register(db: &Db, data: RegistrationDto) -> Result<(), RegisterError> {
-    let config = Config::rfc9106_low_mem();
-    let salt = b"verysuperpuperbigsalt";
-    let auth_info = AuthOrmDto {
-        username: data.username,
-        password: argon2::hash_encoded(data.password.as_bytes(), salt, &config)
-            .map_err(|_| RegisterError::Cipher)?,
-        email: data.email,
-        profile_uid: None,
-    };
-    let passport_data = PassportOrmData {
-        first_name: data.first_name,
-        second_name: data.second_name,
-        patronymic: data.patronymic,
-        birthday_date: data.birth_date,
-    };
-
-    db.apply(|conn| {
-        let passport_uid: Vec<Uuid> = insert_into(passports::dsl::passports)
-            .values(&passport_data)
-            .returning(passports::dsl::uid)
-            .get_results(conn)
-            .map_err(|err| {
-                log::error!("{:?}", err);
-                RegisterError::Insertion
+    pub fn register_user(
+        &self,
+        dto: RegistrationDto,
+        salt_provider: &impl SaltProvider,
+    ) -> Result<(), DbError<AuthServiceError<diesel::result::Error>>> {
+        self.db.transaction(move |conn| {
+            let profile_uid = UserService::create_user(
+                conn,
+                &PassportOrmData {
+                    first_name: &dto.first_name,
+                    second_name: &dto.second_name,
+                    patronymic: dto.patronymic.as_deref(),
+                    birthday_date: dto.birth_date,
+                },
+            )
+            .map_err(|err| match err {
+                UserServiceError::ProfileCreation(_) => AuthServiceError::ProfileCreation,
+                UserServiceError::PassportCreation(_) => AuthServiceError::PassportCreation,
             })?;
 
-        let profile_uid: Vec<Uuid> = insert_into(user_profiles::dsl::user_profiles)
-            .values(&ProfileOrmDto {
-                role: UserProfilesRoles::User,
-                passport_uid: passport_uid.get(0).copied(),
-            })
-            .returning(user_profiles::dsl::uid)
-            .get_results(conn)
-            .map_err(|err| {
-                log::error!("{:?}", err);
-                RegisterError::Insertion
-            })?;
+            let password = Self::hash_password(dto.password.as_bytes(), salt_provider)
+                .map_err(|_| AuthServiceError::HashPassword)?;
 
-        let clonned_auth = auth_info.clone();
+            Self::create_auth_data(
+                conn,
+                &dto.username,
+                &password,
+                &dto.email,
+                Some(profile_uid),
+            )
+        })
+    }
 
+    fn create_auth_data(
+        conn: &mut PgConnection,
+        username: &str,
+        password: &str,
+        email: &str,
+        profile_uid: Option<Uuid>,
+    ) -> Result<(), AuthServiceError<diesel::result::Error>> {
         insert_into(auth_data::dsl::auth_data)
-            .values(&AuthOrmDto {
-                username: clonned_auth.username,
-                password: clonned_auth.password,
-                email: clonned_auth.email,
-                profile_uid: profile_uid.get(0).copied(),
-            })
+            .values((
+                auth_data::dsl::username.eq(username),
+                auth_data::dsl::password.eq(password),
+                auth_data::dsl::email.eq(email),
+                auth_data::dsl::profile_uid.eq(profile_uid),
+            ))
             .execute(conn)
             .map(|_| ())
-            .map_err(|err| {
-                log::error!("{:?}", err);
-                RegisterError::Insertion
-            })
-    })
-    .map_err(|err| match err {
-        DbError::Connection => RegisterError::Inavailable,
-        DbError::Execution(err) => err,
-        _ => unreachable!(),
-    })
+            .map_err(AuthServiceError::AuthDataCreation)
+    }
+
+    fn hash_password(
+        password: &[u8],
+        salt_provider: &impl SaltProvider,
+    ) -> Result<String, AuthServiceError<()>> {
+        argon2::hash_encoded(password, salt_provider.salt(), &Config::rfc9106_low_mem())
+            .map_err(|_| AuthServiceError::HashPassword)
+    }
 }

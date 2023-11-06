@@ -1,11 +1,14 @@
 use std::env;
 
+use crate::services::auth::SaltProvider;
+
 use super::db::DbUrlProvider;
 
 pub struct Config {
     db_url: String,
     host: String,
     port: u16,
+    salt: String,
 }
 
 impl Config {
@@ -24,6 +27,12 @@ impl DbUrlProvider for Config {
     }
 }
 
+impl SaltProvider for Config {
+    fn salt(&self) -> &[u8] {
+        self.salt.as_bytes()
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -32,6 +41,11 @@ impl Default for Config {
             port: env::var("PORT")
                 .map(|e| e.parse().unwrap_or(7878))
                 .unwrap_or(7878),
+            salt: env::var("SALT").unwrap_or_else(|_| {
+                log::warn!("It is not secure to use default salt. Please specify own salt");
+
+                "notsecuresalt".to_string()
+            }),
         }
     }
 }

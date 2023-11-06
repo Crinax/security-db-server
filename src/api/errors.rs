@@ -7,7 +7,7 @@ pub struct JsonMessage<'a> {
 }
 
 pub fn invalid_data() -> HttpResponse {
-    return HttpResponse::BadRequest().json(JsonMessage {
+    HttpResponse::BadRequest().json(JsonMessage {
         message: "invalid_data",
-    });
+    })
 }

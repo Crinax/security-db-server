@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use dotenvy::dotenv;
 
+use crate::services::{auth::AuthService, user::UserService};
 use actix_web::{error, middleware::Logger, web, App, HttpServer};
 use api::{errors::invalid_data, ApiScope, ScopeBuilder};
 use config::Config;
@@ -29,12 +30,18 @@ async fn main() -> std::io::Result<()> {
     log::info!("Running migrations...");
 
     db.migrate(MIGRATIONS).expect("Error while migration");
-    let data = web::Data::new(AppState::new(db));
+
+    let data = web::Data::new(AppState::new(
+        AuthService::new(db.clone()),
+        UserService::new(db.clone()),
+        config.clone(),
+    ));
+
     let json_cfg = web::JsonConfig::default()
         .limit(4096)
         .error_handler(|err, _req| {
             log::error!("{:?}", err);
-            error::InternalError::from_response(err, invalid_data().into()).into()
+            error::InternalError::from_response(err, invalid_data()).into()
         });
 
     log::info!("Starting server at {}:{}", config.host(), config.port());
