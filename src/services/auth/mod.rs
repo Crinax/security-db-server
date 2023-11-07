@@ -24,11 +24,17 @@ pub enum AuthServiceError<T> {
 }
 
 #[derive(Serialize, Deserialize)]
-struct JwtData<'a> {
+struct JwtAccessData<'a> {
     uid: Uuid,
     sub: &'a str,
     username: &'a str,
     role: &'a str,
+    exp: usize,
+}
+
+#[derive(Serialize, Deserialize)]
+struct JwtRefreshData {
+    uid: Uuid,
     exp: usize,
 }
 
@@ -135,26 +141,28 @@ impl AuthService {
         let exp = (chrono::Utc::now() + chrono::Duration::minutes(5)).timestamp() as usize;
         let refresh_exp = (chrono::Utc::now() + chrono::Duration::days(30)).timestamp() as usize;
 
-        let mut data = JwtData {
+        let access_token_data = JwtAccessData {
             sub: email,
             uid,
             username,
             role,
             exp,
         };
+        let refresh_token_data = JwtRefreshData {
+            uid: Uuid::new_v4(),
+            exp: refresh_exp,
+        };
 
         let access_token = encode(
             &Header::default(),
-            &data,
+            &access_token_data,
             &EncodingKey::from_secret(secrets_provider.access_secret()),
         )
         .map_err(|_| AuthServiceError::AccessTokenGeneration)?;
 
-        data.exp = refresh_exp;
-
         let refresh_token = encode(
             &Header::default(),
-            &data,
+            &refresh_token_data,
             &EncodingKey::from_secret(secrets_provider.refresh_secret()),
         )
         .map_err(|_| AuthServiceError::RefreshTokenGeneration)?;
