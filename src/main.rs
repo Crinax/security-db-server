@@ -3,6 +3,7 @@ mod config;
 mod db;
 mod services;
 mod state;
+mod cache;
 
 use std::sync::Arc;
 
