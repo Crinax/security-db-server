@@ -11,6 +11,7 @@ pub struct Config {
     salt: String,
     jwt_secret_access: String,
     jwt_secret_refresh: String,
+    redis_url: String,
 }
 
 impl Config {
@@ -20,6 +21,9 @@ impl Config {
 
     pub fn port(&self) -> u16 {
         self.port
+    }
+    pub fn redis_url(&self) -> &str {
+        &self.redis_url
     }
 }
 
@@ -68,6 +72,7 @@ impl Default for Config {
 
                 "notsecuresecretrefresh".to_string()
             }),
+            redis_url: env::var("REDIS_URL").expect("REDIS_URL must be set"),
         }
     }
 }

@@ -1,5 +1,6 @@
 use redis::{Client, Connection};
 
+#[derive(Debug)]
 pub enum CacheError<T> {
     ConnectionOpen,
     ConnectionGet,
@@ -23,22 +24,34 @@ impl Cache {
         )
     }
 
-    pub fn apply<T, E>(&self, clojure: impl Fn(&mut Connection) -> Result<T, E>) -> Result<T, CacheError<E>> {
-       match self.client.get_connection() {
-           Ok(mut connection) => match clojure(&mut connection) {
-               Ok(result) => Ok(result),
-               Err(err) => Err(CacheError::Execution(err)),
-           },
-           Err(_) => Err(CacheError::ConnectionGet)
-       }
+    pub fn apply<T, E: std::fmt::Debug>(&self, clojure: impl Fn(&mut Connection) -> Result<T, E>) -> Result<T, CacheError<E>> {
+        match self.client.get_connection() {
+            Ok(mut connection) => match clojure(&mut connection) {
+                Ok(result) => Ok(result),
+                Err(err) => {
+                    log::error!("{:?}", err);
+                    Err(CacheError::Execution(err))
+                },
+            },
+            Err(err) => {
+                log::error!("{:?}", err);
+                Err(CacheError::ConnectionGet)
+            }
+        }
     }
 
     pub fn add_pair(&self, key: &str, value: &str, ttl: usize) -> Result<bool, CacheError<CacheError<()>>> {
         self.apply(|conn| {
             redis::cmd("SET").arg(key).arg(value).query(conn)
-                .map_err(|_| CacheError::AddPair)?;
+                .map_err(|err| {
+                    log::error!("{:?}", err);
+                    CacheError::AddPair
+                })?;
             redis::cmd("EXPIREAT").arg(ttl).query(conn)
-                .map_err(|_| CacheError::ExpireSet)?;
+                .map_err(|err| {
+                    log::error!("{:?}", err);
+                    CacheError::ExpireSet
+                })?;
 
             Ok(true)
         })
@@ -47,7 +60,10 @@ impl Cache {
     pub fn get_pair(&self, key: &str) -> Result<Option<String>, CacheError<CacheError<()>>> {
         self.apply(|conn| {
             let value: Option<String> = redis::cmd("GET").arg(key).query(conn)
-                .map_err(|_| CacheError::GetPair)?;
+                .map_err(|err| {
+                    log::error!("{:?}", err);
+                    CacheError::GetPair
+                })?;
 
             Ok(value)
         })

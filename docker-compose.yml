@@ -17,10 +17,12 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   redis:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.12.1
+    ulimits:
+      memlock: -1
     restart: always
     ports:
-      - 6379:6378
+      - 6380:6379
     volumes:
       - redis_data:/data
 

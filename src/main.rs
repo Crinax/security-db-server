@@ -14,6 +14,7 @@ use actix_web::{error, middleware::Logger, web, App, HttpServer};
 use api::{errors::invalid_data, ApiScope, ScopeBuilder};
 use config::Config;
 use db::{Db, DbProvider, DbUrlProvider};
+use cache::Cache;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use env_logger::Env;
 use state::AppState;
@@ -27,6 +28,9 @@ async fn main() -> std::io::Result<()> {
 
     let config = Arc::new(Config::default());
     let db = Arc::new(Db::new(config.db_url()).expect("Db instance error"));
+    let cache = Cache::new(config.redis_url()).expect("Redis instance error");
+
+    log::info!("{:?}", cache.get_pair("huy").expect("some error occured"));
 
     log::info!("Running migrations...");
 
@@ -36,6 +40,7 @@ async fn main() -> std::io::Result<()> {
         AuthService::new(db.clone()),
         UserService::new(db.clone()),
         config.clone(),
+        cache
     ));
 
     let json_cfg = web::JsonConfig::default()
