@@ -2,7 +2,7 @@ services:
   adminer:
     image: adminer
     ports:
-      - ${ADMINER_PORTS}
+      - 8081:8080
     restart: always
 
   db:
@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: ${DB_USER}
     image: postgres
     ports:
-      - ${DB_PORTS}
+      - 5431:5432
     restart: always
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -20,7 +20,7 @@ services:
     image: docker.dragonflydb.io/dragonflydb/dragonfly
     restart: always
     ports:
-      - ${REDIS_PORTS}
+      - 6379:6378
     volumes:
       - redis_data:/data
 

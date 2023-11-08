@@ -1,11 +1,12 @@
-use redis::{Client, Connection, ToRedisArgs};
+use redis::{Client, Connection};
 
 pub enum CacheError<T> {
     ConnectionOpen,
     ConnectionGet,
     Execution(T),
     AddPair,
-    ExpireSet
+    ExpireSet,
+    GetPair,
 }
 
 pub struct Cache {
@@ -13,7 +14,7 @@ pub struct Cache {
 }
 
 impl Cache {
-    fn new(url: &str) -> Result<Self, CacheError<()>> {
+    pub fn new(url: &str) -> Result<Self, CacheError<()>> {
         Ok(
             Self {
                 client: Client::open(url)
@@ -22,7 +23,7 @@ impl Cache {
         )
     }
 
-    fn apply<T, E>(&self, clojure: impl Fn(&mut Connection) -> Result<T, E>) -> Result<T, CacheError<E>> {
+    pub fn apply<T, E>(&self, clojure: impl Fn(&mut Connection) -> Result<T, E>) -> Result<T, CacheError<E>> {
        match self.client.get_connection() {
            Ok(mut connection) => match clojure(&mut connection) {
                Ok(result) => Ok(result),
@@ -32,7 +33,7 @@ impl Cache {
        }
     }
 
-    fn add_pair(&self, key: &str, value: &str, ttl: usize) -> Result<bool, CacheError<CacheError<()>>> {
+    pub fn add_pair(&self, key: &str, value: &str, ttl: usize) -> Result<bool, CacheError<CacheError<()>>> {
         self.apply(|conn| {
             redis::cmd("SET").arg(key).arg(value).query(conn)
                 .map_err(|_| CacheError::AddPair)?;
@@ -43,10 +44,12 @@ impl Cache {
         })
     }
 
-    fn get_pair(&self, key: &str) -> Result<Option<String>, CacheError<CacheError<()>>> {
+    pub fn get_pair(&self, key: &str) -> Result<Option<String>, CacheError<CacheError<()>>> {
         self.apply(|conn| {
-            redis::cmd("GET").arg(key).query(conn)
-                .map_err(|_| CacheError::ExpireSet)?;
+            let value: Option<String> = redis::cmd("GET").arg(key).query(conn)
+                .map_err(|_| CacheError::GetPair)?;
+
+            Ok(value)
         })
     }
 }
