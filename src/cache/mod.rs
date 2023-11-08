@@ -47,7 +47,7 @@ impl Cache {
                     log::error!("{:?}", err);
                     CacheError::AddPair
                 })?;
-            redis::cmd("EXPIREAT").arg(ttl).query(conn)
+            redis::cmd("EXPIREAT").arg(key).arg(ttl).query(conn)
                 .map_err(|err| {
                     log::error!("{:?}", err);
                     CacheError::ExpireSet
