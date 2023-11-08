@@ -30,8 +30,6 @@ async fn main() -> std::io::Result<()> {
     let db = Arc::new(Db::new(config.db_url()).expect("Db instance error"));
     let cache = Cache::new(config.redis_url()).expect("Redis instance error");
 
-    log::info!("{:?}", cache.get_pair("huy").expect("some error occured"));
-
     log::info!("Running migrations...");
 
     db.migrate(MIGRATIONS).expect("Error while migration");

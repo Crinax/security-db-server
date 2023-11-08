@@ -27,6 +27,7 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
         message: "internal server error",
     });
 
+    let clonned_state = state.clone();
     let block_result =
         web::block(move || state.auth_service().register_user(json.0, state.config())).await;
 
@@ -41,6 +42,8 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
     }
 
     let tokens = service_result.unwrap();
+    
+    let _ = clonned_state.redis().add_pair(&tokens.1, "ok", tokens.3);
 
     HttpResponse::Ok()
         .cookie(

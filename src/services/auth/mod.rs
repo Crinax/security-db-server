@@ -60,7 +60,7 @@ impl AuthService {
         &self,
         dto: RegistrationDto,
         config: &T,
-    ) -> Result<(String, String), DbError<AuthServiceError<diesel::result::Error>>>
+    ) -> Result<(String, String, usize, usize), DbError<AuthServiceError<diesel::result::Error>>>
     where
         T: SaltProvider + SecretsProvider,
     {
@@ -137,7 +137,7 @@ impl AuthService {
         email: &str,
         role: &str,
         secrets_provider: &impl SecretsProvider,
-    ) -> Result<(String, String), AuthServiceError<()>> {
+    ) -> Result<(String, String, usize, usize), AuthServiceError<()>> {
         let exp = (chrono::Utc::now() + chrono::Duration::minutes(5)).timestamp() as usize;
         let refresh_exp = (chrono::Utc::now() + chrono::Duration::days(30)).timestamp() as usize;
 
@@ -167,6 +167,6 @@ impl AuthService {
         )
         .map_err(|_| AuthServiceError::RefreshTokenGeneration)?;
 
-        Ok((access_token, refresh_token))
+        Ok((access_token, refresh_token, exp, refresh_exp))
     }
 }
