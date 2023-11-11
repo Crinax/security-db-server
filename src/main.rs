@@ -1,9 +1,9 @@
 mod api;
+mod cache;
 mod config;
 mod db;
 mod services;
 mod state;
-mod cache;
 
 use std::sync::Arc;
 
@@ -12,9 +12,9 @@ use dotenvy::dotenv;
 use crate::services::{auth::AuthService, user::UserService};
 use actix_web::{error, middleware::Logger, web, App, HttpServer};
 use api::{errors::invalid_data, ApiScope, ScopeBuilder};
+use cache::Cache;
 use config::Config;
 use db::{Db, DbProvider, DbUrlProvider};
-use cache::Cache;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use env_logger::Env;
 use state::AppState;
@@ -38,7 +38,7 @@ async fn main() -> std::io::Result<()> {
         AuthService::new(db.clone()),
         UserService::new(db.clone()),
         config.clone(),
-        cache
+        cache,
     ));
 
     let json_cfg = web::JsonConfig::default()

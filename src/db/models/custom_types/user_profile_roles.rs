@@ -16,9 +16,9 @@ pub enum UserProfilesRoles {
     Admin,
 }
 
-impl<'a> Into<&'a str> for UserProfilesRoles {
-    fn into(self) -> &'a str {
-        match self {
+impl<'a> From<UserProfilesRoles> for &'a str {
+    fn from(value: UserProfilesRoles) -> &'a str {
+        match value {
             UserProfilesRoles::User => "user",
             UserProfilesRoles::Law => "law",
             UserProfilesRoles::Admin => "admin",

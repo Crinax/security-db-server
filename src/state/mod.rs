@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
+    cache::Cache,
     config::Config,
-    services::{auth::AuthService, user::UserService}, cache::Cache,
+    services::{auth::AuthService, user::UserService},
 };
 
 pub struct AppState {
@@ -13,7 +14,12 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(auth_service: AuthService, user_service: UserService, config: Arc<Config>, redis: Cache) -> Self {
+    pub fn new(
+        auth_service: AuthService,
+        user_service: UserService,
+        config: Arc<Config>,
+        redis: Cache,
+    ) -> Self {
         Self {
             auth_service,
             user_service,

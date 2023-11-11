@@ -9,8 +9,12 @@ use validator::Validate;
 
 use crate::{
     api::errors::{invalid_data, JsonMessage},
-    services::{dto::auth::{RegistrationDto, AuthorizationDto}, auth::AuthServiceError},
-    state::AppState, db::DbError,
+    db::DbError,
+    services::{
+        auth::AuthServiceError,
+        dto::auth::{AuthorizationDto, RegistrationDto},
+    },
+    state::AppState,
 };
 
 #[derive(Serialize)]
@@ -37,21 +41,19 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
 
     let service_result = block_result.unwrap();
 
-    if service_result.is_err() {
-        match service_result.unwrap_err() {
-            DbError::Execution(err) => match err {
-                AuthServiceError::AlreadyExists => return HttpResponse::Conflict().json(JsonMessage {
-                    message: "already_exists"
-                }),
-                _ => return internal_error,
+    if let Err(service_err) = service_result {
+        match service_err {
+            DbError::Execution(AuthServiceError::AlreadyExists) => {
+                return HttpResponse::Conflict().json(JsonMessage {
+                    message: "already_exists",
+                })
             }
             _ => return internal_error,
-            
         }
     }
 
     let tokens = service_result.unwrap();
-    
+
     let _ = clonned_state.redis().add_pair(&tokens.1, "ok", tokens.3);
 
     HttpResponse::Ok()
@@ -69,17 +71,21 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
 }
 
 #[post("")]
-pub(super) async fn authorize(json: Json<AuthorizationDto>, state: Data<AppState>) -> impl Responder {
+pub(super) async fn authorize(
+    json: Json<AuthorizationDto>,
+    state: Data<AppState>,
+) -> impl Responder {
     if json.validate().is_err() {
         return invalid_data();
     }
 
     let internal_error = HttpResponse::InternalServerError().json(JsonMessage {
-        message: "internal_error"
+        message: "internal_error",
     });
 
     let clonned_state = state.clone();
-    let block_result = web::block(move || state.auth_service().authorize_user(json.0, state.config())).await;
+    let block_result =
+        web::block(move || state.auth_service().authorize_user(json.0, state.config())).await;
 
     if block_result.is_err() {
         return internal_error;
@@ -87,21 +93,20 @@ pub(super) async fn authorize(json: Json<AuthorizationDto>, state: Data<AppState
 
     let db_result = block_result.unwrap();
 
-    if db_result.is_err() {
-        match db_result.unwrap_err() {
+    if let Err(db_err) = db_result {
+        match db_err {
             DbError::Execution(service_result) => match service_result {
                 AuthServiceError::UserNotFound => return invalid_data(),
                 AuthServiceError::InvalidPassword => return invalid_data(),
                 _ => return internal_error,
             },
-            _ => return internal_error
+            _ => return internal_error,
         }
     }
 
     let tokens = db_result.unwrap();
     let _ = clonned_state.redis().add_pair(&tokens.1, "ok", tokens.3);
 
-    
     HttpResponse::Ok()
         .cookie(
             Cookie::build("refresh_token", tokens.1)

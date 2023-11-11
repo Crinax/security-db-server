@@ -70,7 +70,7 @@ impl AuthService {
         config: &T,
     ) -> Result<(String, String, usize, usize), DbError<AuthServiceError<()>>>
     where
-        T: SaltProvider + SecretsProvider
+        T: SaltProvider + SecretsProvider,
     {
         self.db.apply(move |conn| {
             let data = AuthService::find_by_email_or_username(conn, &dto.email_or_username)
@@ -79,7 +79,7 @@ impl AuthService {
                 .map_err(|_| AuthServiceError::PasswordVerify)?;
 
             if data.profile_uid.is_none() {
-                return Err(AuthServiceError::AuthDataWithoutProfile)
+                return Err(AuthServiceError::AuthDataWithoutProfile);
             }
 
             let user = UserService::get_user_by_pk(conn, &data.profile_uid.unwrap())
@@ -94,17 +94,16 @@ impl AuthService {
                 &data.username,
                 &data.email,
                 user.role.into(),
-                config
+                config,
             )
-                .map_err(|err| match err {
-                        AuthServiceError::AccessTokenGeneration =>
-                            AuthServiceError::AccessTokenGeneration,
-                        AuthServiceError::RefreshTokenGeneration =>
-                            AuthServiceError::RefreshTokenGeneration,
-                        _ => AuthServiceError::Unreachable,
-                })
+            .map_err(|err| match err {
+                AuthServiceError::AccessTokenGeneration => AuthServiceError::AccessTokenGeneration,
+                AuthServiceError::RefreshTokenGeneration => {
+                    AuthServiceError::RefreshTokenGeneration
+                }
+                _ => AuthServiceError::Unreachable,
+            })
         })
-
     }
 
     pub fn register_user<T>(
@@ -127,10 +126,10 @@ impl AuthService {
             )
             .map_err(|err| match err {
                 UserServiceError::ProfileCreation(err) => match err {
-                    diesel::result::Error::DatabaseError(kind, _) => match kind {
-                        diesel::result::DatabaseErrorKind::UniqueViolation => AuthServiceError::AlreadyExists,
-                        _ => AuthServiceError::ProfileCreation,
-                    },
+                    diesel::result::Error::DatabaseError(
+                        diesel::result::DatabaseErrorKind::UniqueViolation,
+                        _,
+                    ) => AuthServiceError::AlreadyExists,
                     _ => AuthServiceError::ProfileCreation,
                 },
                 UserServiceError::PassportCreation(_) => AuthServiceError::PassportCreation,
@@ -232,25 +231,23 @@ impl AuthService {
         input_password: &[u8],
         record_password: &str,
     ) -> Result<bool, AuthServiceError<()>> {
-        argon2::verify_encoded(
-            record_password,
-            input_password,
-        )
+        argon2::verify_encoded(record_password, input_password)
             .map_err(|_| AuthServiceError::PasswordVerify)
     }
 
-    fn find_by_email_or_username(conn: &mut PgConnection, email_or_username: &str)
-        -> Result<models::auth_data::AuthData, AuthServiceError<()>>
-    {
+    fn find_by_email_or_username(
+        conn: &mut PgConnection,
+        email_or_username: &str,
+    ) -> Result<models::auth_data::AuthData, AuthServiceError<()>> {
         let result = auth_data::dsl::auth_data
             .filter(
                 auth_data::dsl::email
                     .eq(email_or_username)
-                    .or(auth_data::dsl::username.eq(email_or_username))
+                    .or(auth_data::dsl::username.eq(email_or_username)),
             )
             .first(conn)
             .map_err(|_| AuthServiceError::UserNotFound)?;
-        
+
         Ok(result)
     }
 }

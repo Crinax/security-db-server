@@ -2,8 +2,10 @@ use std::sync::Arc;
 
 use super::dto::user::PassportOrmData;
 use crate::db::{
-    models::{custom_types::user_profile_roles::UserProfilesRoles, user_profiles::UserProfile}, orm::schema::passports,
-    orm::schema::user_profiles, Db, DbError, DbProvider,
+    models::{custom_types::user_profile_roles::UserProfilesRoles, user_profiles::UserProfile},
+    orm::schema::passports,
+    orm::schema::user_profiles,
+    Db, DbError, DbProvider,
 };
 use diesel::{insert_into, prelude::*};
 use uuid::Uuid;
@@ -41,14 +43,16 @@ impl UserService {
         Self::create_profile(conn, &Some(uid), &UserProfilesRoles::User)
     }
 
-    pub fn get_user_by_pk(conn: &mut PgConnection, uid: &Uuid)
-        -> Result<UserProfile, UserServiceError<()>>
-    {
-        let result: UserProfile = user_profiles::dsl::user_profiles.find(uid)
+    pub fn get_user_by_pk(
+        conn: &mut PgConnection,
+        uid: &Uuid,
+    ) -> Result<UserProfile, UserServiceError<()>> {
+        let result: UserProfile = user_profiles::dsl::user_profiles
+            .find(uid)
             .first(conn)
             .map_err(|_| UserServiceError::NotFound)?;
 
-        return Ok(result);
+        Ok(result)
     }
 
     fn create_passport(

@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use validator::{Validate, ValidationError, validate_email, validate_length};
+use validator::{validate_email, validate_length, Validate, ValidationError};
 
 #[derive(Deserialize, Validate, Debug, Clone)]
 pub struct RegistrationDto {
@@ -20,11 +20,11 @@ pub struct RegistrationDto {
 
 fn email_or_username(value: &str) -> Result<(), ValidationError> {
     if validate_email(value) {
-        return Ok(())
+        return Ok(());
     }
 
     if validate_length(value, Some(3), Some(255), None) {
-        return Ok(())
+        return Ok(());
     }
 
     Err(ValidationError::new("email_or_username"))
