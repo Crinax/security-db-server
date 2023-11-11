@@ -1,4 +1,5 @@
 pub mod errors;
+mod middlewares;
 mod v1;
 
 use actix_web::{web, Scope};
