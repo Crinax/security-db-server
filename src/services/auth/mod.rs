@@ -28,6 +28,7 @@ pub enum AuthServiceError<T> {
     PasswordVerify,
     AuthDataWithoutProfile,
     Unreachable,
+    AlreadyExists,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -125,7 +126,13 @@ impl AuthService {
                 },
             )
             .map_err(|err| match err {
-                UserServiceError::ProfileCreation(_) => AuthServiceError::ProfileCreation,
+                UserServiceError::ProfileCreation(err) => match err {
+                    diesel::result::Error::DatabaseError(kind, _) => match kind {
+                        diesel::result::DatabaseErrorKind::UniqueViolation => AuthServiceError::AlreadyExists,
+                        _ => AuthServiceError::ProfileCreation,
+                    },
+                    _ => AuthServiceError::ProfileCreation,
+                },
                 UserServiceError::PassportCreation(_) => AuthServiceError::PassportCreation,
                 UserServiceError::NotFound => AuthServiceError::Unreachable,
             })?;

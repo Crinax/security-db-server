@@ -38,7 +38,16 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
     let service_result = block_result.unwrap();
 
     if service_result.is_err() {
-        return internal_error;
+        match service_result.unwrap_err() {
+            DbError::Execution(err) => match err {
+                AuthServiceError::AlreadyExists => return HttpResponse::Conflict().json(JsonMessage {
+                    message: "already_exists"
+                }),
+                _ => return internal_error,
+            }
+            _ => return internal_error,
+            
+        }
     }
 
     let tokens = service_result.unwrap();
