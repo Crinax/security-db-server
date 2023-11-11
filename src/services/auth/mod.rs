@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::db::models;
 use crate::db::{orm::schema::auth_data, Db, DbError, DbProvider};
 use argon2::{self, Config};
 use diesel::insert_into;
@@ -8,6 +9,7 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::dto::auth::AuthorizationDto;
 use super::{
     dto::{auth::RegistrationDto, user::PassportOrmData},
     user::{UserService, UserServiceError},
@@ -21,6 +23,11 @@ pub enum AuthServiceError<T> {
     PassportCreation,
     AccessTokenGeneration,
     RefreshTokenGeneration,
+    InvalidPassword,
+    UserNotFound,
+    PasswordVerify,
+    AuthDataWithoutProfile,
+    Unreachable,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -56,6 +63,49 @@ impl AuthService {
         Self { db }
     }
 
+    pub fn authorize_user<T>(
+        &self,
+        dto: AuthorizationDto,
+        config: &T,
+    ) -> Result<(String, String, usize, usize), DbError<AuthServiceError<()>>>
+    where
+        T: SaltProvider + SecretsProvider
+    {
+        self.db.apply(move |conn| {
+            let data = AuthService::find_by_email_or_username(conn, &dto.email_or_username)
+                .map_err(|_| AuthServiceError::UserNotFound)?;
+            let hashed_password = Self::verify_password(dto.password.as_bytes(), &data.password)
+                .map_err(|_| AuthServiceError::PasswordVerify)?;
+
+            if data.profile_uid.is_none() {
+                return Err(AuthServiceError::AuthDataWithoutProfile)
+            }
+
+            let user = UserService::get_user_by_pk(conn, &data.profile_uid.unwrap())
+                .map_err(|_| AuthServiceError::UserNotFound)?;
+
+            if !hashed_password {
+                return Err(AuthServiceError::InvalidPassword);
+            }
+
+            Self::generate_tokens(
+                data.uid,
+                &data.username,
+                &data.email,
+                user.role.into(),
+                config
+            )
+                .map_err(|err| match err {
+                        AuthServiceError::AccessTokenGeneration =>
+                            AuthServiceError::AccessTokenGeneration,
+                        AuthServiceError::RefreshTokenGeneration =>
+                            AuthServiceError::RefreshTokenGeneration,
+                        _ => AuthServiceError::Unreachable,
+                })
+        })
+
+    }
+
     pub fn register_user<T>(
         &self,
         dto: RegistrationDto,
@@ -77,6 +127,7 @@ impl AuthService {
             .map_err(|err| match err {
                 UserServiceError::ProfileCreation(_) => AuthServiceError::ProfileCreation,
                 UserServiceError::PassportCreation(_) => AuthServiceError::PassportCreation,
+                UserServiceError::NotFound => AuthServiceError::Unreachable,
             })?;
 
             let password = Self::hash_password(dto.password.as_bytes(), config)
@@ -98,7 +149,7 @@ impl AuthService {
                     AuthServiceError::RefreshTokenGeneration => {
                         AuthServiceError::RefreshTokenGeneration
                     }
-                    _ => unreachable!(),
+                    _ => AuthServiceError::Unreachable,
                 }
             })
         })
@@ -168,5 +219,31 @@ impl AuthService {
         .map_err(|_| AuthServiceError::RefreshTokenGeneration)?;
 
         Ok((access_token, refresh_token, exp, refresh_exp))
+    }
+
+    fn verify_password(
+        input_password: &[u8],
+        record_password: &str,
+    ) -> Result<bool, AuthServiceError<()>> {
+        argon2::verify_encoded(
+            record_password,
+            input_password,
+        )
+            .map_err(|_| AuthServiceError::PasswordVerify)
+    }
+
+    fn find_by_email_or_username(conn: &mut PgConnection, email_or_username: &str)
+        -> Result<models::auth_data::AuthData, AuthServiceError<()>>
+    {
+        let result = auth_data::dsl::auth_data
+            .filter(
+                auth_data::dsl::email
+                    .eq(email_or_username)
+                    .or(auth_data::dsl::username.eq(email_or_username))
+            )
+            .first(conn)
+            .map_err(|_| AuthServiceError::UserNotFound)?;
+        
+        Ok(result)
     }
 }

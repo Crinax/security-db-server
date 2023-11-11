@@ -16,6 +16,17 @@ pub enum UserProfilesRoles {
     Admin,
 }
 
+impl<'a> Into<&'a str> for UserProfilesRoles {
+    fn into(self) -> &'a str {
+        match self {
+            UserProfilesRoles::User => "user",
+            UserProfilesRoles::Law => "law",
+            UserProfilesRoles::Admin => "admin",
+            UserProfilesRoles::Employee => "employee",
+        }
+    }
+}
+
 impl ToSql<crate::db::orm::schema::sql_types::UserProfilesRoles, Pg> for UserProfilesRoles {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
         match *self {
