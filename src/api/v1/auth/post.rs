@@ -1,8 +1,8 @@
 use actix_web::{
     cookie::{time::{Duration, OffsetDateTime, ext::NumericalDuration}, Cookie},
     post,
-    web::{self, Data, Json},
-    HttpResponse, Responder,
+    web::{self, Data, Json, Header},
+    HttpResponse, Responder, HttpRequest,
 };
 use serde::Serialize;
 use validator::Validate;
@@ -62,7 +62,7 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
             Cookie::build("refresh_token", tokens.1)
                 .secure(true)
                 .http_only(true)
-                .path("/")
+                .path("/api/v1/auth")
                 .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days()))
                 .finish(),
         )
@@ -107,14 +107,15 @@ pub(super) async fn authorize(
 
     let tokens = db_result.unwrap();
     let _ = clonned_state.redis().add_pair(&tokens.1, "ok", tokens.3);
+    let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
 
     HttpResponse::Ok()
         .cookie(
             Cookie::build("refresh_token", tokens.1)
                 .secure(true)
                 .http_only(true)
-                .path("/")
-                .max_age(Duration::minutes(5))
+                .path("/api/v1/auth")
+                .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days()))
                 .finish(),
         )
         .json(AuthDataResult {
