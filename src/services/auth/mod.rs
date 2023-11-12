@@ -5,7 +5,7 @@ use crate::db::{orm::schema::auth_data, Db, DbError, DbProvider};
 use argon2::{self, Config};
 use diesel::insert_into;
 use diesel::prelude::*;
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{encode, EncodingKey, Header, decode, Validation, DecodingKey};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -29,14 +29,16 @@ pub enum AuthServiceError<T> {
     AuthDataWithoutProfile,
     Unreachable,
     AlreadyExists,
+    InvalidToken,
+    TokenExpired,
 }
 
 #[derive(Serialize, Deserialize)]
-struct JwtAccessData<'a> {
+struct JwtAccessData {
     uid: Uuid,
-    sub: &'a str,
-    username: &'a str,
-    role: &'a str,
+    sub: String,
+    username: String,
+    role: String,
     exp: usize,
 }
 
@@ -78,11 +80,7 @@ impl AuthService {
             let hashed_password = Self::verify_password(dto.password.as_bytes(), &data.password)
                 .map_err(|_| AuthServiceError::PasswordVerify)?;
 
-            if data.profile_uid.is_none() {
-                return Err(AuthServiceError::AuthDataWithoutProfile);
-            }
-
-            let user = UserService::get_user_by_pk(conn, &data.profile_uid.unwrap())
+            let user = UserService::find_user_by_pk(conn, &data.profile_uid)
                 .map_err(|_| AuthServiceError::UserNotFound)?;
 
             if !hashed_password {
@@ -144,7 +142,7 @@ impl AuthService {
                 &dto.username,
                 &password,
                 &dto.email,
-                Some(profile_uid),
+                profile_uid,
             )?;
 
             Self::generate_tokens(uid, &dto.username, &dto.email, "user", config).map_err(|err| {
@@ -161,12 +159,49 @@ impl AuthService {
         })
     }
 
+    pub fn refresh_tokens(&self, access_token: &str, secrets_provider: &impl SecretsProvider) -> Result<(String, String, usize, usize), DbError<AuthServiceError<()>>> {
+        let user_data = AuthService::decrypt_token(access_token, secrets_provider)
+            .map_err(|err| {
+                match err {
+                    AuthServiceError::InvalidToken => DbError::Execution(AuthServiceError::InvalidToken),
+                    _ => DbError::Unreachable
+                }
+            })?;
+
+        let profile_data = self.db.apply(move |conn| {
+            let auth = AuthService::find_by_pk(conn, &user_data.uid)?;
+
+            let user_data = UserService::find_user_by_pk(conn, &auth.profile_uid)
+                .map_err(|err| match err {
+                    UserServiceError::NotFound => AuthServiceError::UserNotFound,
+                    _ => AuthServiceError::Unreachable,
+                })?;
+
+            Ok(user_data)
+        })?;
+
+        let tokens = AuthService::generate_tokens(
+            user_data.uid,
+            &user_data.username,
+            &user_data.sub,
+            profile_data.role.into(),
+            secrets_provider,
+        )
+            .map_err(|err| match err {
+                AuthServiceError::AccessTokenGeneration => DbError::Execution(AuthServiceError::AccessTokenGeneration),
+                AuthServiceError::RefreshTokenGeneration => DbError::Execution(AuthServiceError::RefreshTokenGeneration),
+                _ => DbError::Unreachable,
+            })?;
+
+        Ok(tokens)
+    }
+
     fn create_auth_data(
         conn: &mut PgConnection,
         username: &str,
         password: &str,
         email: &str,
-        profile_uid: Option<Uuid>,
+        profile_uid: Uuid,
     ) -> Result<Uuid, AuthServiceError<diesel::result::Error>> {
         insert_into(auth_data::dsl::auth_data)
             .values((
@@ -195,14 +230,12 @@ impl AuthService {
         role: &str,
         secrets_provider: &impl SecretsProvider,
     ) -> Result<(String, String, usize, usize), AuthServiceError<()>> {
-        let exp = (chrono::Utc::now() + chrono::Duration::minutes(5)).timestamp() as usize;
-        let refresh_exp = (chrono::Utc::now() + chrono::Duration::days(30)).timestamp() as usize;
-
+        let (exp, refresh_exp) = AuthService::generate_expiration_time();
         let access_token_data = JwtAccessData {
-            sub: email,
+            sub: email.to_owned(),
             uid,
-            username,
-            role,
+            username: username.to_owned(),
+            role: role.to_owned(),
             exp,
         };
         let refresh_token_data = JwtRefreshData {
@@ -249,5 +282,61 @@ impl AuthService {
             .map_err(|_| AuthServiceError::UserNotFound)?;
 
         Ok(result)
+    }
+
+    fn find_by_pk(
+        conn: &mut PgConnection,
+        pk: &Uuid,
+    ) -> Result<models::auth_data::AuthData, AuthServiceError<()>> {
+        let result = auth_data::dsl::auth_data
+            .find(pk)
+            .first(conn)
+            .map_err(|_| AuthServiceError::UserNotFound)?;
+
+        Ok(result)
+    }
+
+    fn validate_token(access_token: &str, secrets_provider: &impl SecretsProvider) -> Result<(), AuthServiceError<()>> {
+        decode::<JwtAccessData>(
+            access_token,
+            &DecodingKey::from_secret(secrets_provider.access_secret()),
+            &Validation::default(),
+        )
+            .map_err(|err| {
+                log::error!("{}", err);
+
+                match err.kind() {
+                    jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthServiceError::TokenExpired,
+                    _ => AuthServiceError::InvalidToken,
+                }
+            })?;
+
+        Ok(())
+    }
+
+    fn decrypt_token(access_token: &str, secrets_provider: &impl SecretsProvider) -> Result<JwtAccessData, AuthServiceError<()>> {
+        let mut validation_without_exp = Validation::default();
+
+        validation_without_exp.validate_exp = false;
+
+        let token = decode::<JwtAccessData>(
+            access_token,
+            &DecodingKey::from_secret(secrets_provider.access_secret()),
+            &validation_without_exp,
+        )
+            .map_err(|err| {
+                log::error!("{}", err);
+
+                AuthServiceError::InvalidToken
+            })?;
+
+        Ok(token.claims)
+    }
+
+    fn generate_expiration_time() -> (usize, usize) {
+        let exp = (chrono::Utc::now() + chrono::Duration::minutes(5)).timestamp() as usize;
+        let refresh_exp = (chrono::Utc::now() + chrono::Duration::days(30)).timestamp() as usize;
+
+        return (exp, refresh_exp);
     }
 }
