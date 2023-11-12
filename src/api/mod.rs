@@ -2,17 +2,17 @@ pub mod errors;
 mod middlewares;
 mod v1;
 
-use actix_web::{web, Scope};
-use v1::V1Scope;
+use std::sync::Arc;
 
-pub(super) trait ScopeBuilder {
-    fn build_scope() -> Scope;
-}
+use actix_web::web;
 
-pub(super) struct ApiScope;
+use crate::config::Config;
 
-impl ScopeBuilder for ApiScope {
-    fn build_scope() -> Scope {
-        web::scope("/api").service(V1Scope::build_scope())
+pub(super) fn configure(config: Arc<Config>) -> impl Fn(&mut web::ServiceConfig) -> () {
+    move |cfg| {
+        cfg.service(
+            web::scope("/v1")
+                .configure(v1::configure(config.clone()))
+        );
     }
 }

@@ -1,12 +1,14 @@
 mod get;
 
-use super::ScopeBuilder;
-use actix_web::{web, Scope};
+use std::sync::Arc;
 
-pub(super) struct LawsScope;
+use crate::config::Config;
 
-impl ScopeBuilder for LawsScope {
-    fn build_scope() -> Scope {
-        web::scope("/laws").service(get::get_laws)
+use actix_web::web;
+
+pub(super) fn configure(_: Arc<Config>) -> impl Fn(&mut web::ServiceConfig) -> () {
+    move |cfg| {
+        cfg
+            .service(get::get_laws);
     }
 }

@@ -34,12 +34,12 @@ pub enum AuthServiceError<T> {
 }
 
 #[derive(Serialize, Deserialize)]
-struct JwtAccessData {
-    uid: Uuid,
-    sub: String,
-    username: String,
-    role: String,
-    exp: usize,
+pub struct JwtAccessData {
+    pub uid: Uuid,
+    pub sub: String,
+    pub username: String,
+    pub role: String,
+    pub exp: usize,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -171,16 +171,14 @@ impl AuthService {
         let profile_data = self.db.apply(move |conn| {
             let auth = AuthService::find_by_pk(conn, &user_data.uid)?;
 
-            let user_data = UserService::find_user_by_pk(conn, &auth.profile_uid)
+            UserService::find_user_by_pk(conn, &auth.profile_uid)
                 .map_err(|err| match err {
                     UserServiceError::NotFound => AuthServiceError::UserNotFound,
                     _ => AuthServiceError::Unreachable,
-                })?;
-
-            Ok(user_data)
+                })
         })?;
 
-        let tokens = AuthService::generate_tokens(
+        AuthService::generate_tokens(
             user_data.uid,
             &user_data.username,
             &user_data.sub,
@@ -191,9 +189,25 @@ impl AuthService {
                 AuthServiceError::AccessTokenGeneration => DbError::Execution(AuthServiceError::AccessTokenGeneration),
                 AuthServiceError::RefreshTokenGeneration => DbError::Execution(AuthServiceError::RefreshTokenGeneration),
                 _ => DbError::Unreachable,
-            })?;
+            })
 
-        Ok(tokens)
+    }
+
+    pub fn validate_token(access_token: &str, secrets_provider: &impl SecretsProvider) -> Result<JwtAccessData, AuthServiceError<()>> {
+        decode::<JwtAccessData>(
+            access_token,
+            &DecodingKey::from_secret(secrets_provider.access_secret()),
+            &Validation::default(),
+        )
+            .map(|jwt| jwt.claims)
+            .map_err(|err| {
+                log::error!("{}", err);
+
+                match err.kind() {
+                    jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthServiceError::TokenExpired,
+                    _ => AuthServiceError::InvalidToken,
+                }
+            })
     }
 
     fn create_auth_data(
@@ -272,46 +286,24 @@ impl AuthService {
         conn: &mut PgConnection,
         email_or_username: &str,
     ) -> Result<models::auth_data::AuthData, AuthServiceError<()>> {
-        let result = auth_data::dsl::auth_data
+        auth_data::dsl::auth_data
             .filter(
                 auth_data::dsl::email
                     .eq(email_or_username)
                     .or(auth_data::dsl::username.eq(email_or_username)),
             )
             .first(conn)
-            .map_err(|_| AuthServiceError::UserNotFound)?;
-
-        Ok(result)
+            .map_err(|_| AuthServiceError::UserNotFound)
     }
 
     fn find_by_pk(
         conn: &mut PgConnection,
         pk: &Uuid,
     ) -> Result<models::auth_data::AuthData, AuthServiceError<()>> {
-        let result = auth_data::dsl::auth_data
+        auth_data::dsl::auth_data
             .find(pk)
             .first(conn)
-            .map_err(|_| AuthServiceError::UserNotFound)?;
-
-        Ok(result)
-    }
-
-    fn validate_token(access_token: &str, secrets_provider: &impl SecretsProvider) -> Result<(), AuthServiceError<()>> {
-        decode::<JwtAccessData>(
-            access_token,
-            &DecodingKey::from_secret(secrets_provider.access_secret()),
-            &Validation::default(),
-        )
-            .map_err(|err| {
-                log::error!("{}", err);
-
-                match err.kind() {
-                    jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthServiceError::TokenExpired,
-                    _ => AuthServiceError::InvalidToken,
-                }
-            })?;
-
-        Ok(())
+            .map_err(|_| AuthServiceError::UserNotFound)
     }
 
     fn decrypt_token(access_token: &str, secrets_provider: &impl SecretsProvider) -> Result<JwtAccessData, AuthServiceError<()>> {
@@ -319,18 +311,17 @@ impl AuthService {
 
         validation_without_exp.validate_exp = false;
 
-        let token = decode::<JwtAccessData>(
+        decode::<JwtAccessData>(
             access_token,
             &DecodingKey::from_secret(secrets_provider.access_secret()),
             &validation_without_exp,
         )
+            .map(|jwt| jwt.claims)
             .map_err(|err| {
                 log::error!("{}", err);
 
                 AuthServiceError::InvalidToken
-            })?;
-
-        Ok(token.claims)
+            })
     }
 
     fn generate_expiration_time() -> (usize, usize) {

@@ -11,7 +11,7 @@ use dotenvy::dotenv;
 
 use crate::services::{auth::AuthService, user::UserService};
 use actix_web::{error, middleware::Logger, web, App, HttpServer};
-use api::{errors::invalid_data, ApiScope, ScopeBuilder};
+use api::errors::invalid_data;
 use cache::Cache;
 use config::Config;
 use db::{Db, DbProvider, DbUrlProvider};
@@ -27,6 +27,7 @@ async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     let config = Arc::new(Config::default());
+    let clonned_config = config.clone();
     let db = Arc::new(Db::new(config.db_url()).expect("Db instance error"));
     let cache = Cache::new(config.redis_url()).expect("Redis instance error");
 
@@ -55,7 +56,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(json_cfg.clone())
             .app_data(data.clone())
             .wrap(Logger::default())
-            .service(ApiScope::build_scope())
+            .service(
+                web::scope("/api").configure(api::configure(clonned_config.clone()))
+            )
     })
     .bind((config.host(), config.port()))?
     .run()

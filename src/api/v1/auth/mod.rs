@@ -1,14 +1,15 @@
 mod post;
 
-use super::ScopeBuilder;
-use actix_web::{web, Scope};
+use std::sync::Arc;
 
-pub(super) struct AuthScope;
+use crate::config::Config;
 
-impl ScopeBuilder for AuthScope {
-    fn build_scope() -> Scope {
-        web::scope("/auth")
+use actix_web::web;
+
+pub(super) fn configure(_: Arc<Config>) -> impl Fn(&mut web::ServiceConfig) -> () {
+    move |cfg| {
+        cfg
             .service(post::register)
-            .service(post::authorize)
+            .service(post::authorize);
     }
 }

@@ -1,19 +1,22 @@
 mod auth;
 mod laws;
 
-use actix_web::{web, Scope};
+use std::sync::Arc;
+use actix_web::web;
+use crate::config::Config;
 
-use self::auth::AuthScope;
+use super::middlewares::authenticate::JwtAuth;
 
-use super::ScopeBuilder;
-use laws::LawsScope;
-
-pub(super) struct V1Scope;
-
-impl ScopeBuilder for V1Scope {
-    fn build_scope() -> Scope {
-        web::scope("/v1")
-            .service(AuthScope::build_scope())
-            .service(LawsScope::build_scope())
+pub(super) fn configure(config: Arc<Config>) -> impl Fn(&mut web::ServiceConfig) -> () {
+    move |cfg| {
+        cfg.service(
+            web::scope("/laws")
+                .wrap(JwtAuth::new(config.clone()))
+                .configure(laws::configure(config.clone()))
+        )
+        .service(
+            web::scope("/auth")
+                .configure(auth::configure(config.clone()))
+        );
     }
 }
