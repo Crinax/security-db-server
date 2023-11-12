@@ -43,7 +43,7 @@ impl UserService {
         Self::create_profile(conn, &Some(uid), &UserProfilesRoles::User)
     }
 
-    pub fn get_user_by_pk(
+    pub fn find_user_by_pk(
         conn: &mut PgConnection,
         uid: &Uuid,
     ) -> Result<UserProfile, UserServiceError<()>> {
