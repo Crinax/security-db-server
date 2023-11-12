@@ -5,7 +5,7 @@ use crate::db::{orm::schema::auth_data, Db, DbError, DbProvider};
 use argon2::{self, Config};
 use diesel::insert_into;
 use diesel::prelude::*;
-use jsonwebtoken::{encode, EncodingKey, Header, decode, Validation, DecodingKey};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -137,13 +137,8 @@ impl AuthService {
             let password = Self::hash_password(dto.password.as_bytes(), config)
                 .map_err(|_| AuthServiceError::HashPassword)?;
 
-            let uid = Self::create_auth_data(
-                conn,
-                &dto.username,
-                &password,
-                &dto.email,
-                profile_uid,
-            )?;
+            let uid =
+                Self::create_auth_data(conn, &dto.username, &password, &dto.email, profile_uid)?;
 
             Self::generate_tokens(uid, &dto.username, &dto.email, "user", config).map_err(|err| {
                 match err {
@@ -159,23 +154,27 @@ impl AuthService {
         })
     }
 
-    pub fn refresh_tokens(&self, access_token: &str, secrets_provider: &impl SecretsProvider) -> Result<(String, String, usize, usize), DbError<AuthServiceError<()>>> {
-        let user_data = AuthService::decrypt_token(access_token, secrets_provider)
-            .map_err(|err| {
-                match err {
-                    AuthServiceError::InvalidToken => DbError::Execution(AuthServiceError::InvalidToken),
-                    _ => DbError::Unreachable
+    pub fn refresh_tokens(
+        &self,
+        access_token: &str,
+        secrets_provider: &impl SecretsProvider,
+    ) -> Result<(String, String, usize, usize), DbError<AuthServiceError<()>>> {
+        let user_data = AuthService::decrypt_token(access_token, secrets_provider).map_err(
+            |err| match err {
+                AuthServiceError::InvalidToken => {
+                    DbError::Execution(AuthServiceError::InvalidToken)
                 }
-            })?;
+                _ => DbError::Unreachable,
+            },
+        )?;
 
         let profile_data = self.db.apply(move |conn| {
             let auth = AuthService::find_by_pk(conn, &user_data.uid)?;
 
-            UserService::find_user_by_pk(conn, &auth.profile_uid)
-                .map_err(|err| match err {
-                    UserServiceError::NotFound => AuthServiceError::UserNotFound,
-                    _ => AuthServiceError::Unreachable,
-                })
+            UserService::find_user_by_pk(conn, &auth.profile_uid).map_err(|err| match err {
+                UserServiceError::NotFound => AuthServiceError::UserNotFound,
+                _ => AuthServiceError::Unreachable,
+            })
         })?;
 
         AuthService::generate_tokens(
@@ -185,29 +184,35 @@ impl AuthService {
             profile_data.role.into(),
             secrets_provider,
         )
-            .map_err(|err| match err {
-                AuthServiceError::AccessTokenGeneration => DbError::Execution(AuthServiceError::AccessTokenGeneration),
-                AuthServiceError::RefreshTokenGeneration => DbError::Execution(AuthServiceError::RefreshTokenGeneration),
-                _ => DbError::Unreachable,
-            })
-
+        .map_err(|err| match err {
+            AuthServiceError::AccessTokenGeneration => {
+                DbError::Execution(AuthServiceError::AccessTokenGeneration)
+            }
+            AuthServiceError::RefreshTokenGeneration => {
+                DbError::Execution(AuthServiceError::RefreshTokenGeneration)
+            }
+            _ => DbError::Unreachable,
+        })
     }
 
-    pub fn validate_token(access_token: &str, secrets_provider: &impl SecretsProvider) -> Result<JwtAccessData, AuthServiceError<()>> {
+    pub fn validate_token(
+        access_token: &str,
+        secrets_provider: &impl SecretsProvider,
+    ) -> Result<JwtAccessData, AuthServiceError<()>> {
         decode::<JwtAccessData>(
             access_token,
             &DecodingKey::from_secret(secrets_provider.access_secret()),
             &Validation::default(),
         )
-            .map(|jwt| jwt.claims)
-            .map_err(|err| {
-                log::error!("{}", err);
+        .map(|jwt| jwt.claims)
+        .map_err(|err| {
+            log::error!("{}", err);
 
-                match err.kind() {
-                    jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthServiceError::TokenExpired,
-                    _ => AuthServiceError::InvalidToken,
-                }
-            })
+            match err.kind() {
+                jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthServiceError::TokenExpired,
+                _ => AuthServiceError::InvalidToken,
+            }
+        })
     }
 
     fn create_auth_data(
@@ -306,7 +311,10 @@ impl AuthService {
             .map_err(|_| AuthServiceError::UserNotFound)
     }
 
-    fn decrypt_token(access_token: &str, secrets_provider: &impl SecretsProvider) -> Result<JwtAccessData, AuthServiceError<()>> {
+    fn decrypt_token(
+        access_token: &str,
+        secrets_provider: &impl SecretsProvider,
+    ) -> Result<JwtAccessData, AuthServiceError<()>> {
         let mut validation_without_exp = Validation::default();
 
         validation_without_exp.validate_exp = false;
@@ -316,18 +324,18 @@ impl AuthService {
             &DecodingKey::from_secret(secrets_provider.access_secret()),
             &validation_without_exp,
         )
-            .map(|jwt| jwt.claims)
-            .map_err(|err| {
-                log::error!("{}", err);
+        .map(|jwt| jwt.claims)
+        .map_err(|err| {
+            log::error!("{}", err);
 
-                AuthServiceError::InvalidToken
-            })
+            AuthServiceError::InvalidToken
+        })
     }
 
     fn generate_expiration_time() -> (usize, usize) {
         let exp = (chrono::Utc::now() + chrono::Duration::minutes(5)).timestamp() as usize;
         let refresh_exp = (chrono::Utc::now() + chrono::Duration::days(30)).timestamp() as usize;
 
-        return (exp, refresh_exp);
+        (exp, refresh_exp)
     }
 }

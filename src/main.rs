@@ -56,9 +56,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(json_cfg.clone())
             .app_data(data.clone())
             .wrap(Logger::default())
-            .service(
-                web::scope("/api").configure(api::configure(clonned_config.clone()))
-            )
+            .service(web::scope("/api").configure(api::configure(clonned_config.clone())))
     })
     .bind((config.host(), config.port()))?
     .run()

@@ -8,11 +8,8 @@ use actix_web::web;
 
 use crate::config::Config;
 
-pub(super) fn configure(config: Arc<Config>) -> impl Fn(&mut web::ServiceConfig) -> () {
+pub(super) fn configure(config: Arc<Config>) -> impl Fn(&mut web::ServiceConfig) {
     move |cfg| {
-        cfg.service(
-            web::scope("/v1")
-                .configure(v1::configure(config.clone()))
-        );
+        cfg.service(web::scope("/v1").configure(v1::configure(config.clone())));
     }
 }

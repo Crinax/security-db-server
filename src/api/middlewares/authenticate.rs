@@ -1,11 +1,22 @@
-use std::{future::{Ready, ready}, sync::Arc};
+use std::{
+    future::{ready, Ready},
+    sync::Arc,
+};
 
-use actix_web::{dev::{Transform, ServiceRequest, Service, ServiceResponse}, HttpMessage, http::header, HttpResponse, Responder, body::{EitherBody, BoxBody}};
+use actix_web::{
+    body::EitherBody,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform},
+    http::header,
+    HttpMessage,
+};
 
 use crate::services::auth::{AuthService, SecretsProvider};
 use futures_util::future::LocalBoxFuture;
 
-pub struct JwtAuthService<S, T> where T: SecretsProvider {
+pub struct JwtAuthService<S, T>
+where
+    T: SecretsProvider,
+{
     service: S,
     secrets_provider: Arc<T>,
 }
@@ -14,13 +25,15 @@ macro_rules! need_authorization {
     ($req:ident) => {
         let res = $req.into_response(
             actix_web::HttpResponse::Unauthorized()
-                .json(crate::api::errors::JsonMessage { message: "need_authorization" })
-                .map_into_boxed_body()
+                .json(crate::api::errors::JsonMessage {
+                    message: "need_authorization",
+                })
+                .map_into_boxed_body(),
         );
         return Box::pin(async move {
             Ok(res.map_body(|_, body| actix_web::body::EitherBody::right(body)))
         });
-    }
+    };
 }
 
 impl<S, B, T: SecretsProvider> Service<ServiceRequest> for JwtAuthService<S, T>
@@ -55,7 +68,7 @@ where
             need_authorization!(req);
         }
 
-        let mut auth_value = auth_value.unwrap().split(" ");
+        let mut auth_value = auth_value.unwrap().split(' ');
         let auth_type = auth_value.next();
         let token = auth_value.last();
 
@@ -75,8 +88,10 @@ where
         if data.is_err() {
             let res = req.into_response(
                 actix_web::HttpResponse::Forbidden()
-                    .json(crate::api::errors::JsonMessage { message: "invalid_token" })
-                    .map_into_boxed_body()
+                    .json(crate::api::errors::JsonMessage {
+                        message: "invalid_token",
+                    })
+                    .map_into_boxed_body(),
             );
             return Box::pin(async move {
                 Ok(res.map_body(|_, body| actix_web::body::EitherBody::right(body)))
@@ -85,8 +100,7 @@ where
 
         let data = data.unwrap();
 
-        req.extensions_mut()
-            .insert(data);
+        req.extensions_mut().insert(data);
 
         let fut = self.service.call(req);
         Box::pin(async move {
@@ -97,7 +111,10 @@ where
     }
 }
 
-pub struct JwtAuth<T> where T: SecretsProvider {
+pub struct JwtAuth<T>
+where
+    T: SecretsProvider,
+{
     secrets_provider: Arc<T>,
 }
 
@@ -120,6 +137,9 @@ where
     type InitError = ();
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(JwtAuthService { service, secrets_provider: self.secrets_provider.clone() }))
+        ready(Ok(JwtAuthService {
+            service,
+            secrets_provider: self.secrets_provider.clone(),
+        }))
     }
 }

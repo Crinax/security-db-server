@@ -1,8 +1,11 @@
 use actix_web::{
-    cookie::{time::{Duration, OffsetDateTime, ext::NumericalDuration}, Cookie},
+    cookie::{
+        time::{ext::NumericalDuration, OffsetDateTime},
+        Cookie,
+    },
     post,
-    web::{self, Data, Json, Header},
-    HttpResponse, Responder, HttpRequest,
+    web::{self, Data, Json},
+    HttpResponse, Responder,
 };
 use serde::Serialize;
 use validator::Validate;
