@@ -1,5 +1,5 @@
 use actix_web::{
-    cookie::{time::Duration, Cookie},
+    cookie::{time::{Duration, OffsetDateTime, ext::NumericalDuration}, Cookie},
     post,
     web::{self, Data, Json},
     HttpResponse, Responder,
@@ -55,6 +55,7 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
     let tokens = service_result.unwrap();
 
     let _ = clonned_state.redis().add_pair(&tokens.1, "ok", tokens.3);
+    let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
 
     HttpResponse::Ok()
         .cookie(
@@ -62,7 +63,7 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
                 .secure(true)
                 .http_only(true)
                 .path("/")
-                .max_age(Duration::minutes(5))
+                .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days()))
                 .finish(),
         )
         .json(AuthDataResult {
