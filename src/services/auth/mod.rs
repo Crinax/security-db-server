@@ -26,7 +26,6 @@ pub enum AuthServiceError<T> {
     InvalidPassword,
     UserNotFound,
     PasswordVerify,
-    AuthDataWithoutProfile,
     Unreachable,
     AlreadyExists,
     InvalidToken,
