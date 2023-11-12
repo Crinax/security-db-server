@@ -32,7 +32,7 @@ pub enum AuthServiceError<T> {
     TokenExpired,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct JwtAccessData {
     pub uid: Uuid,
     pub sub: String,
@@ -155,18 +155,9 @@ impl AuthService {
 
     pub fn refresh_tokens(
         &self,
-        access_token: &str,
+        user_data: &JwtAccessData,
         secrets_provider: &impl SecretsProvider,
     ) -> Result<(String, String, usize, usize), DbError<AuthServiceError<()>>> {
-        let user_data = AuthService::decrypt_token(access_token, secrets_provider).map_err(
-            |err| match err {
-                AuthServiceError::InvalidToken => {
-                    DbError::Execution(AuthServiceError::InvalidToken)
-                }
-                _ => DbError::Unreachable,
-            },
-        )?;
-
         let profile_data = self.db.apply(move |conn| {
             let auth = AuthService::find_by_pk(conn, &user_data.uid)?;
 

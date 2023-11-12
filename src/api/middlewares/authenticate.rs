@@ -7,7 +7,7 @@ use actix_web::{
     body::EitherBody,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     http::header,
-    HttpMessage,
+    HttpMessage, HttpRequest,
 };
 
 use crate::services::auth::{AuthService, SecretsProvider};
@@ -36,6 +36,44 @@ macro_rules! need_authorization {
     };
 }
 
+pub fn extract_auth_token(req: &HttpRequest) -> Option<&str> {
+    let auth_header = req.headers().get(header::AUTHORIZATION);
+
+    if auth_header.is_none() {
+        return None;
+    }
+
+    let auth_header = auth_header.unwrap();
+
+    if auth_header.is_empty() {
+        return None;
+    }
+
+    let auth_value = auth_header.to_str();
+
+    if auth_value.is_err() {
+        log::info!("Non visible ASCII characters in header value");
+        return None;
+    }
+
+    let mut auth_value = auth_value.unwrap().split(' ');
+    let auth_type = auth_value.next();
+    let token = auth_value.last();
+
+    if auth_type.is_none() || token.is_none() {
+        return None;
+    }
+
+    let auth_type = auth_type.unwrap();
+    let token = token.unwrap();
+
+    if auth_type.to_lowercase() != "bearer" {
+        return None;
+    }
+
+    Some(token)
+}
+
 impl<S, B, T: SecretsProvider> Service<ServiceRequest> for JwtAuthService<S, T>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
@@ -49,39 +87,13 @@ where
     actix_web::dev::forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let auth_header = req.headers().get(header::AUTHORIZATION);
+        let token = extract_auth_token(&req.request());
 
-        if auth_header.is_none() {
+        if token.is_none() {
             need_authorization!(req);
         }
 
-        let auth_header = auth_header.unwrap();
-
-        if auth_header.is_empty() {
-            need_authorization!(req);
-        }
-
-        let auth_value = auth_header.to_str();
-
-        if auth_value.is_err() {
-            log::info!("Non visible ASCII characters in header value");
-            need_authorization!(req);
-        }
-
-        let mut auth_value = auth_value.unwrap().split(' ');
-        let auth_type = auth_value.next();
-        let token = auth_value.last();
-
-        if auth_type.is_none() || token.is_none() {
-            need_authorization!(req);
-        }
-
-        let auth_type = auth_type.unwrap();
         let token = token.unwrap();
-
-        if auth_type.to_lowercase() != "bearer" {
-            need_authorization!(req);
-        }
 
         let data = AuthService::validate_token(token, self.secrets_provider.as_ref());
 

@@ -5,16 +5,17 @@ use actix_web::{
     },
     post,
     web::{self, Data, Json},
-    HttpResponse, Responder,
+    HttpResponse, Responder, HttpRequest,
 };
 use serde::Serialize;
+use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-    api::errors::{invalid_data, JsonMessage},
+    api::{errors::{invalid_data, JsonMessage}, middlewares::authenticate::extract_auth_token},
     db::DbError,
     services::{
-        auth::AuthServiceError,
+        auth::{AuthServiceError, AuthService},
         dto::auth::{AuthorizationDto, RegistrationDto},
     },
     state::AppState,
@@ -24,6 +25,73 @@ use crate::{
 struct AuthDataResult {
     access_token: String,
     expires: usize,
+}
+
+#[post("refresh-tokens")]
+pub(super) async fn refresh_tokens(req: HttpRequest, state: Data<AppState>) -> impl Responder {
+    let refresh_token = req.cookie("refresh_token");
+    let access_token = extract_auth_token(&req);
+    let token_not_found = HttpResponse::Unauthorized().json(JsonMessage {
+        message: "token_not_found",
+    });
+    let internal_error = HttpResponse::InternalServerError().json(JsonMessage {
+        message: "internal_error",
+    });
+    let clonned_state = state.clone();
+
+    if refresh_token.is_none() {
+        return token_not_found;
+    }
+
+    let refresh_token = refresh_token.unwrap();
+    let refresh_token = refresh_token.value();
+
+    if refresh_token.is_empty() {
+        return token_not_found;
+    }
+
+    let user_data = AuthService::decrypt_token(&access_token, state.config());
+
+    let block_result =
+        web::block(move || state.auth_service().refresh_tokens(&user_data, state.config())).await;
+
+    if block_result.is_err() {
+        return internal_error;
+    }
+
+    let service_result = block_result.unwrap();
+
+    if let Err(err) = service_result {
+        match err {
+            DbError::Execution(AuthServiceError::UserNotFound) =>
+                return HttpResponse::NotFound().json(JsonMessage {
+                    message: "user_not_found"
+                }),
+            _ => return internal_error,
+        }
+    }
+
+    let tokens = service_result.unwrap();
+
+    let _ = clonned_state.redis().remove(&refresh_token);
+    let new_token_uid = Uuid::new_v4().to_string();
+    let _ = clonned_state.redis().add_pair(&new_token_uid, &new_token_uid, tokens.3);
+
+    let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
+
+    HttpResponse::Ok()
+        .cookie(
+            Cookie::build("refresh_token", new_token_uid)
+                .secure(true)
+                .http_only(true)
+                .path("/api/v1/auth")
+                .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days()))
+                .finish(),
+        )
+        .json(AuthDataResult {
+            access_token: tokens.0,
+            expires: tokens.2
+        })
 }
 
 #[post("register")]
@@ -58,12 +126,13 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
 
     let tokens = service_result.unwrap();
 
-    let _ = clonned_state.redis().add_pair(&tokens.1, "ok", tokens.3);
+    let token_uid = Uuid::new_v4().to_string();
+    let _ = clonned_state.redis().add_pair(&token_uid, &tokens.1, tokens.3);
     let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
 
     HttpResponse::Ok()
         .cookie(
-            Cookie::build("refresh_token", tokens.1)
+            Cookie::build("refresh_token", token_uid)
                 .secure(true)
                 .http_only(true)
                 .path("/api/v1/auth")
@@ -111,12 +180,13 @@ pub(super) async fn authorize(
     }
 
     let tokens = db_result.unwrap();
-    let _ = clonned_state.redis().add_pair(&tokens.1, "ok", tokens.3);
+    let token_uid = Uuid::new_v4().to_string();
+    let _ = clonned_state.redis().add_pair(&token_uid, &tokens.1, tokens.3);
     let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
 
     HttpResponse::Ok()
         .cookie(
-            Cookie::build("refresh_token", tokens.1)
+            Cookie::build("refresh_token", token_uid)
                 .secure(true)
                 .http_only(true)
                 .path("/api/v1/auth")

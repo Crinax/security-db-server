@@ -8,6 +8,7 @@ pub enum CacheError<T> {
     AddPair,
     ExpireSet,
     GetPair,
+    Remove,
 }
 
 pub struct Cache {
@@ -76,6 +77,17 @@ impl Cache {
             })?;
 
             Ok(value)
+        })
+    }
+
+    pub fn remove(&self, key: &str) -> Result<(), CacheError<CacheError<()>>> {
+        self.apply(|conn| {
+            let _: Option<i32> = redis::cmd("DEL").arg(key).query(conn).map_err(|err| {
+                log::info!("{:?}", err);
+                CacheError::Remove
+            })?;
+
+            Ok(())
         })
     }
 }
