@@ -23,6 +23,7 @@ use crate::{
 #[derive(Serialize)]
 struct AuthDataResult {
     access_token: String,
+    expires: usize,
 }
 
 #[post("register")]
@@ -71,6 +72,7 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
         )
         .json(AuthDataResult {
             access_token: tokens.0,
+            expires: tokens.2
         })
 }
 
@@ -123,5 +125,6 @@ pub(super) async fn authorize(
         )
         .json(AuthDataResult {
             access_token: tokens.0,
+            expires: tokens.2
         })
 }
