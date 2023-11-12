@@ -28,6 +28,7 @@ pub enum DbError<T> {
     Execution(T),
     Migration,
     OrmError(diesel::result::Error),
+    Unreachable,
 }
 
 impl<T> From<diesel::result::Error> for DbError<T> {
@@ -113,7 +114,7 @@ impl DbProvider<PgPool, PgConnection> for Db {
             DbError::Execution(err) => err,
             DbError::Connection => DbError::Connection,
             DbError::OrmError(err) => DbError::OrmError(err),
-            _ => unreachable!(),
+            _ => DbError::Unreachable,
         })
     }
 }

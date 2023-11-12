@@ -29,7 +29,7 @@ pub mod sql_types {
 diesel::table! {
     auth_data (uid) {
         uid -> Uuid,
-        profile_uid -> Nullable<Uuid>,
+        profile_uid -> Uuid,
         #[max_length = 255]
         email -> Varchar,
         #[max_length = 255]

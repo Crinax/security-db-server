@@ -10,7 +10,7 @@ use super::user_profiles::UserProfile;
 #[diesel(primary_key(uid))]
 pub struct AuthData {
     pub uid: Uuid,
-    pub profile_uid: Option<Uuid>,
+    pub profile_uid: Uuid,
     pub email: String,
     pub username: String,
     pub password: String,
