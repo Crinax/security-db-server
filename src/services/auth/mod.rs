@@ -130,7 +130,7 @@ impl AuthService {
                     _ => AuthServiceError::ProfileCreation,
                 },
                 UserServiceError::PassportCreation(_) => AuthServiceError::PassportCreation,
-                UserServiceError::NotFound => AuthServiceError::Unreachable,
+                _ => AuthServiceError::Unreachable,
             })?;
 
             let password = Self::hash_password(dto.password.as_bytes(), config)

@@ -6,13 +6,21 @@ use diesel::{
     pg::{Pg, PgValue},
     serialize::{self, IsNull, Output, ToSql},
 };
+use serde::Serialize;
 
-#[derive(Debug, AsExpression, FromSqlRow)]
+#[derive(Debug, AsExpression, FromSqlRow, Serialize)]
 #[diesel(sql_type = crate::db::orm::schema::sql_types::UserProfilesRoles)]
 pub enum UserProfilesRoles {
+    #[serde(rename = "user")]
     User,
+
+    #[serde(rename = "employee")]
     Employee,
+
+    #[serde(rename = "law")]
     Law,
+
+    #[serde(rename = "employee")]
     Admin,
 }
 

@@ -1,8 +1,9 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
+use serde::Serialize;
 use uuid::Uuid;
 
-#[derive(Queryable, Identifiable, Selectable, Debug)]
+#[derive(Queryable, Identifiable, Selectable, Debug, Serialize)]
 #[diesel(table_name = crate::db::orm::schema::law_profiles)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(primary_key(uid))]

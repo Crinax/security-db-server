@@ -1,8 +1,9 @@
 use chrono::NaiveDate;
 use diesel::prelude::*;
+use serde::Serialize;
 use uuid::Uuid;
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Debug, Serialize, Selectable)]
 #[diesel(table_name = crate::db::orm::schema::passports)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Passport {

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use super::dto::user::PassportOrmData;
+use super::dto::user::{PassportOrmData, LawProfileWithUser};
 use crate::db::{
-    models::{custom_types::user_profile_roles::UserProfilesRoles, user_profiles::UserProfile},
+    models::{custom_types::user_profile_roles::UserProfilesRoles, user_profiles::UserProfile, law_profiles::LawProfile, passports::Passport},
     orm::schema::passports,
-    orm::schema::user_profiles,
+    orm::schema::{user_profiles, law_profiles},
     Db, DbError, DbProvider,
 };
 use diesel::{insert_into, prelude::*};
@@ -15,6 +15,7 @@ pub enum UserServiceError<T> {
     PassportCreation(T),
     ProfileCreation(T),
     NotFound,
+    GetLaws,
 }
 
 pub struct UserService {
@@ -53,6 +54,49 @@ impl UserService {
             .map_err(|_| UserServiceError::NotFound)?;
 
         Ok(result)
+    }
+
+    pub fn get_laws(&self, page: i64) -> Result<Vec<LawProfileWithUser>, DbError<UserServiceError<()>>> {
+        const LIMIT: i64 = 15;
+
+        self.db.apply(|conn| {
+            Ok(
+                user_profiles::table
+                    .filter(
+                        user_profiles::dsl::law_profile.is_not_null().and(
+                            user_profiles::dsl::passport_uid.is_not_null()
+                        )
+                    )
+                    .left_join(law_profiles::table)
+                    .left_join(passports::table)
+                    .offset(page * LIMIT)
+                    .limit(LIMIT)
+                    .select((
+                        (
+                            user_profiles::dsl::uid,
+                            user_profiles::dsl::avatar_uid
+                        ),
+                        LawProfile::as_select(),
+                        (
+                            passports::dsl::first_name,
+                            passports::
+                        )
+                    ))
+                    .load(conn)
+                    .map_err(|_| UserServiceError::GetLaws)?
+                    .into_iter()
+                    .map(|(user, law, passport)| LawProfileWithUser {
+                        uid: user.uid,
+                        law_uid: law.uid,
+                        first_name: passport.first_name,
+                        second_name: passport.second_name,
+                        patronymic: passport.patronymic,
+                        itn: law.itn,
+                        start_activity_date: law.start_activity_date,
+                    })
+                    .collect::<Vec<LawProfileWithUser>>()
+            )
+        })
     }
 
     fn create_passport(

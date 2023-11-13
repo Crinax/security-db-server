@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
+use serde::Serialize;
 use uuid::Uuid;
 
 use super::custom_types::user_profile_roles::UserProfilesRoles;
@@ -7,7 +8,7 @@ use super::files::File;
 use super::law_profiles::LawProfile;
 use super::passports::Passport;
 
-#[derive(Queryable, Associations, Selectable, Identifiable, Debug)]
+#[derive(Queryable, Associations, Selectable, Identifiable, Debug, Serialize)]
 #[diesel(belongs_to(Passport, foreign_key = passport_uid))]
 #[diesel(belongs_to(File, foreign_key = avatar_uid))]
 #[diesel(belongs_to(LawProfile, foreign_key = law_profile))]
