@@ -31,26 +31,45 @@ struct AuthDataResult {
 pub(super) async fn refresh_tokens(req: HttpRequest, state: Data<AppState>) -> impl Responder {
     let refresh_token = req.cookie("refresh_token");
     let access_token = extract_auth_token(&req);
-    let token_not_found = HttpResponse::Unauthorized().json(JsonMessage {
-        message: "token_not_found",
+    let refresh_token_not_found = HttpResponse::Unauthorized().json(JsonMessage {
+        message: "refresh_token_not_found",
+    });
+    let access_token_not_found = HttpResponse::Unauthorized().json(JsonMessage {
+        message: "access_token_not_found",
     });
     let internal_error = HttpResponse::InternalServerError().json(JsonMessage {
         message: "internal_error",
     });
     let clonned_state = state.clone();
 
-    if refresh_token.is_none() {
-        return token_not_found;
+    if access_token.is_none() {
+        return access_token_not_found;
     }
 
+    if refresh_token.is_none() {
+        return refresh_token_not_found;
+    }
+
+    let access_token = access_token.unwrap();
     let refresh_token = refresh_token.unwrap();
     let refresh_token = refresh_token.value();
 
     if refresh_token.is_empty() {
-        return token_not_found;
+        return refresh_token_not_found;
     }
 
     let user_data = AuthService::decrypt_token(&access_token, state.config());
+
+    if let Err(err) = user_data {
+        match err {
+            AuthServiceError::InvalidToken => return HttpResponse::BadRequest().json(JsonMessage {
+                message: "invalid_token"
+            }),
+            _ => return internal_error,
+        }
+    }
+
+    let user_data = user_data.unwrap();
 
     let block_result =
         web::block(move || state.auth_service().refresh_tokens(&user_data, state.config())).await;

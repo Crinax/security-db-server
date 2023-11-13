@@ -301,7 +301,7 @@ impl AuthService {
             .map_err(|_| AuthServiceError::UserNotFound)
     }
 
-    fn decrypt_token(
+    pub fn decrypt_token(
         access_token: &str,
         secrets_provider: &impl SecretsProvider,
     ) -> Result<JwtAccessData, AuthServiceError<()>> {
