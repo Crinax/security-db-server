@@ -15,7 +15,7 @@ pub struct PassportOrmData<'a> {
 #[derive(Serialize)]
 pub struct LawProfileWithUser {
     pub uid: Uuid,
-    pub avatar_uid: Uuid,
+    pub avatar_uid: Option<Uuid>,
     pub law_uid: Uuid,
     pub first_name: String,
     pub second_name: String,
