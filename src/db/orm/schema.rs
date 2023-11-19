@@ -124,7 +124,7 @@ diesel::table! {
     messages (uid) {
         uid -> Uuid,
         chat_uid -> Uuid,
-        sender_uid -> Nullable<Uuid>,
+        sender_uid -> Uuid,
         content -> Text,
     }
 }
