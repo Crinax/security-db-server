@@ -8,3 +8,4 @@ pub mod chats;
 pub mod messages;
 pub mod message_files;
 pub mod service;
+pub mod court_cases;
