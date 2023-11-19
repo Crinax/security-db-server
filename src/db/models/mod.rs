@@ -9,3 +9,4 @@ pub mod messages;
 pub mod message_files;
 pub mod service;
 pub mod court_cases;
+pub mod court_sides;
