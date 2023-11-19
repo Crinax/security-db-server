@@ -12,6 +12,5 @@ pub struct Messages {
     pub uid: Uuid,
     pub chat_uid: Uuid,
     pub sender_uid: Uuid,
-    pub name: String,
-    pub connection_hash: String,
+    pub content: String,
 }
