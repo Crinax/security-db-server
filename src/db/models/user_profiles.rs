@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use serde::Serialize;
 use uuid::Uuid;
 
-use super::custom_types::user_profile_roles::UserProfilesRoles;
+use super::custom_types::user_profiles_roles::UserProfilesRoles;
 use super::files::File;
 use super::law_profiles::LawProfile;
 use super::passports::Passport;
