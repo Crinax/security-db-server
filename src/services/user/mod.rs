@@ -77,7 +77,6 @@ impl UserService {
                     .map_err(|_| UserServiceError::GetLaws)?
                     .into_iter()
                     .map(|record: (UserProfile, Option<LawProfile>, Option<Passport>)| {
-                        log::info!("{:?}", record);
                         let law = record.1.unwrap();
                         let passport = record.2.unwrap();
                         let user = record.0;
