@@ -14,11 +14,7 @@ pub(super) async fn get_laws(query: web::Query<LawPage>, state: Data<AppState>) 
 
     if query.page.is_some() {
         
-        page = {
-            let p = query.page.unwrap();
-            
-            if p == 0 { p } else { p - 1 }
-        }
+        page = query.page.unwrap();
     }
 
     let internal_error = HttpResponse::InternalServerError().json(

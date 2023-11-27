@@ -56,7 +56,7 @@ impl UserService {
     }
 
     pub fn get_laws(&self, page: u64) -> Result<Vec<LawProfileWithUser>, DbError<UserServiceError<()>>> {
-        const LIMIT: u64 = 15;
+        const LIMIT: i64 = 15;
 
         self.db.apply(|conn| {
             Ok(
@@ -71,8 +71,8 @@ impl UserService {
                     // What?
                     // Postgres: offset cannot be negative
                     // Diesel: ...can... be...
-                    .offset((page * LIMIT) as i64)
-                    .limit(LIMIT as i64)
+                    .offset((page as i64 - 1) * LIMIT)
+                    .limit(LIMIT)
                     .load(conn)
                     .map_err(|_| UserServiceError::GetLaws)?
                     .into_iter()
