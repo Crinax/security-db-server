@@ -2,11 +2,10 @@ use std::sync::Arc;
 
 use super::dto::user::{PassportOrmData, LawProfileWithUser};
 use crate::db::{
-    models::{custom_types::user_profile_roles::UserProfilesRoles, user_profiles::UserProfile, law_profiles::LawProfile, passports::Passport},
+    models::{custom_types::user_profiles_roles::UserProfilesRoles, user_profiles::UserProfile, law_profiles::LawProfile, passports::Passport},
     orm::schema::{user_profiles, law_profiles, passports},
     Db, DbError, DbProvider,
 };
-use chrono::NaiveDateTime;
 use diesel::{insert_into, prelude::*};
 use uuid::Uuid;
 
@@ -56,8 +55,8 @@ impl UserService {
         Ok(result)
     }
 
-    pub fn get_laws(&self, page: i64) -> Result<Vec<LawProfileWithUser>, DbError<UserServiceError<()>>> {
-        const LIMIT: i64 = 15;
+    pub fn get_laws(&self, page: u64) -> Result<Vec<LawProfileWithUser>, DbError<UserServiceError<()>>> {
+        const LIMIT: u64 = 15;
 
         self.db.apply(|conn| {
             Ok(
@@ -69,25 +68,30 @@ impl UserService {
                             user_profiles::dsl::passport_uid.is_not_null()
                         )
                     )
-                    .offset(page * LIMIT)
-                    .limit(LIMIT)
-                    .select((
-                        UserProfile::as_select(),
-                        LawProfile::as_select().assume_not_null(),
-                        Passport::as_select().assume_not_null()
-                    ))
+                    // What?
+                    // Postgres: offset cannot be negative
+                    // Diesel: ...can... be...
+                    .offset((page * LIMIT) as i64)
+                    .limit(LIMIT as i64)
                     .load(conn)
                     .map_err(|_| UserServiceError::GetLaws)?
                     .into_iter()
-                    .map(|record: (UserProfile, LawProfile, Passport)| LawProfileWithUser {
-                        uid: record.0.uid,
-                        avatar_uid: record.0.avatar_uid,
-                        law_uid: record.1.uid,
-                        itn: record.1.itn,
-                        start_activity_date: record.1.start_activity_date,
-                        first_name: record.2.first_name,
-                        second_name: record.2.second_name,
-                        patronymic: record.2.patronymic,
+                    .map(|record: (UserProfile, Option<LawProfile>, Option<Passport>)| {
+                        log::info!("{:?}", record);
+                        let law = record.1.unwrap();
+                        let passport = record.2.unwrap();
+                        let user = record.0;
+
+                        LawProfileWithUser {
+                            uid: user.uid,
+                            avatar_uid: user.avatar_uid,
+                            law_uid: law.uid,
+                            itn: law.itn,
+                            start_activity_date: law.start_activity_date,
+                            first_name: passport.first_name,
+                            second_name: passport.second_name,
+                            patronymic: passport.patronymic,
+                        }
                     })
                     .collect::<Vec<LawProfileWithUser>>()
             )
