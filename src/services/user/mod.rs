@@ -63,11 +63,8 @@ impl UserService {
                 user_profiles::table
                     .left_join(law_profiles::table)
                     .left_join(passports::table)
-                    .filter(
-                        user_profiles::dsl::law_profile.is_not_null().and(
-                            user_profiles::dsl::passport_uid.is_not_null()
-                        )
-                    )
+                    .filter(user_profiles::dsl::law_profile.is_not_null())
+                    .filter(user_profiles::dsl::passport_uid.is_not_null())
                     // What?
                     // Postgres: offset cannot be negative
                     // Diesel: ...can... be...
