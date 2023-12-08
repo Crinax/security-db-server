@@ -18,6 +18,7 @@ use db::{Db, DbProvider, DbUrlProvider};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use env_logger::Env;
 use state::AppState;
+use actix_cors::Cors;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/db/migrations");
 
@@ -52,7 +53,14 @@ async fn main() -> std::io::Result<()> {
     log::info!("Starting server at {}:{}", config.host(), config.port());
 
     HttpServer::new(move || {
+        let cors = Cors::default()
+              .allow_any_origin()
+              .allowed_methods(vec!["GET", "POST", "PATCH", "DELETE"])
+              .allowed_headers(vec!["Content-Type"])
+              .max_age(3600);
+
         App::new()
+            .wrap(cors)
             .app_data(json_cfg.clone())
             .app_data(data.clone())
             .wrap(Logger::default())
