@@ -10,7 +10,7 @@ use std::sync::Arc;
 use dotenvy::dotenv;
 
 use crate::services::{auth::AuthService, user::UserService};
-use actix_web::{error, middleware::Logger, web, App, HttpServer};
+use actix_web::{error, middleware::Logger, web, App, HttpServer, http::header::{self, ContentType}};
 use api::errors::invalid_data;
 use cache::Cache;
 use config::Config;
@@ -56,7 +56,14 @@ async fn main() -> std::io::Result<()> {
         let cors = Cors::default()
               .allow_any_origin()
               .allowed_methods(vec!["GET", "POST", "PATCH", "DELETE"])
-              .allowed_headers(vec!["Content-Type"])
+              .allowed_headers(vec![
+                header::AUTHORIZATION,
+                header::ACCEPT,
+                header::CONTENT_TYPE,
+                header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                header::CONTENT_TYPE
+              ])
+              .supports_credentials()
               .max_age(3600);
 
         App::new()
