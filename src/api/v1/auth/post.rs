@@ -8,11 +8,10 @@ use actix_web::{
     HttpResponse, Responder, HttpRequest,
 };
 use serde::Serialize;
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-    api::{errors::{invalid_data, JsonMessage}, middlewares::authenticate::extract_auth_token},
+    api::errors::{invalid_data, JsonMessage},
     db::DbError,
     services::{
         auth::{AuthServiceError, AuthService},
@@ -30,29 +29,33 @@ struct AuthDataResult {
 #[post("refresh-tokens")]
 pub(super) async fn refresh_tokens(req: HttpRequest, state: Data<AppState>) -> impl Responder {
     let refresh_token = req.cookie("refresh_token");
-    let access_token = extract_auth_token(&req);
     let refresh_token_not_found = HttpResponse::Unauthorized().json(JsonMessage {
         message: "refresh_token_not_found",
-    });
-    let access_token_not_found = HttpResponse::Unauthorized().json(JsonMessage {
-        message: "access_token_not_found",
     });
     let internal_error = HttpResponse::InternalServerError().json(JsonMessage {
         message: "internal_error",
     });
     let clonned_state = state.clone();
 
-    if access_token.is_none() {
-        return access_token_not_found;
-    }
-
     if refresh_token.is_none() {
         return refresh_token_not_found;
     }
 
-    let access_token = access_token.unwrap();
     let refresh_token = refresh_token.unwrap();
     let refresh_token = refresh_token.value();
+    let access_token = clonned_state.redis().get_pair(&refresh_token);
+
+    if access_token.is_err() {
+        return internal_error;
+    }
+
+    let access_token = access_token.unwrap();
+
+    if access_token.is_none() {
+        return refresh_token_not_found;
+    }
+
+    let access_token = access_token.unwrap();
 
     if refresh_token.is_empty() {
         return refresh_token_not_found;
@@ -93,14 +96,13 @@ pub(super) async fn refresh_tokens(req: HttpRequest, state: Data<AppState>) -> i
     let tokens = service_result.unwrap();
 
     let _ = clonned_state.redis().remove(&refresh_token);
-    let new_token_uid = Uuid::new_v4().to_string();
-    let _ = clonned_state.redis().add_pair(&new_token_uid, &new_token_uid, tokens.3);
+    let _ = clonned_state.redis().add_pair(&tokens.1, &access_token, tokens.3);
 
     let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
 
     HttpResponse::Ok()
         .cookie(
-            Cookie::build("refresh_token", new_token_uid)
+            Cookie::build("refresh_token", tokens.1)
                 .secure(true)
                 .http_only(true)
                 .path("/api/v1/auth")
@@ -145,13 +147,12 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
 
     let tokens = service_result.unwrap();
 
-    let token_uid = Uuid::new_v4().to_string();
-    let _ = clonned_state.redis().add_pair(&token_uid, &tokens.1, tokens.3);
+    let _ = clonned_state.redis().add_pair(&tokens.1, &tokens.0, tokens.3);
     let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
 
     HttpResponse::Ok()
         .cookie(
-            Cookie::build("refresh_token", token_uid)
+            Cookie::build("refresh_token", tokens.1)
                 .secure(true)
                 .http_only(true)
                 .path("/api/v1/auth")
@@ -199,13 +200,12 @@ pub(super) async fn authorize(
     }
 
     let tokens = db_result.unwrap();
-    let token_uid = Uuid::new_v4().to_string();
-    let _ = clonned_state.redis().add_pair(&token_uid, &tokens.1, tokens.3);
+    let _ = clonned_state.redis().add_pair(&tokens.1, &tokens.0, tokens.3);
     let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
 
     HttpResponse::Ok()
         .cookie(
-            Cookie::build("refresh_token", token_uid)
+            Cookie::build("refresh_token", tokens.1)
                 .secure(true)
                 .http_only(true)
                 .path("/api/v1/auth")

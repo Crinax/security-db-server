@@ -247,10 +247,7 @@ impl AuthService {
             role: role.to_owned(),
             exp,
         };
-        let refresh_token_data = JwtRefreshData {
-            uid: Uuid::new_v4(),
-            exp: refresh_exp,
-        };
+        let refresh_token_data = Uuid::new_v4();
 
         let access_token = encode(
             &Header::default(),
