@@ -11,6 +11,7 @@ pub(super) fn configure(_: Arc<Config>) -> impl Fn(&mut web::ServiceConfig) {
         cfg
             .service(post::register)
             .service(post::authorize)
-            .service(post::refresh_tokens);
+            .service(post::refresh_tokens)
+            .service(post::logout);
     }
 }
