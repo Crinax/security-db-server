@@ -1,4 +1,5 @@
 mod get;
+mod delete;
 
 use std::sync::Arc;
 
