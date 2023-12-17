@@ -126,7 +126,7 @@ pub(super) async fn refresh_tokens(req: HttpRequest, state: Data<AppState>) -> i
     let _ = clonned_state.redis().remove(&refresh_token);
     let _ = clonned_state.redis().add_pair(&tokens.1, &access_token, tokens.3);
 
-    let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
+    let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64 * 1000);
 
     HttpResponse::Ok()
         .cookie(
@@ -134,12 +134,12 @@ pub(super) async fn refresh_tokens(req: HttpRequest, state: Data<AppState>) -> i
                 .secure(true)
                 .http_only(true)
                 .path("/api/v1/auth")
-                .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days()))
+                .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days() * 1000))
                 .finish(),
         )
         .json(AuthDataResult {
             access_token: tokens.0,
-            expires: tokens.2
+            expires: tokens.2 * 1000
         })
 }
 
@@ -176,7 +176,7 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
     let tokens = service_result.unwrap();
 
     let _ = clonned_state.redis().add_pair(&tokens.1, &tokens.0, tokens.3);
-    let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
+    let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64 * 1000);
 
     HttpResponse::Ok()
         .cookie(
@@ -184,12 +184,12 @@ pub(super) async fn register(json: Json<RegistrationDto>, state: Data<AppState>)
                 .secure(true)
                 .http_only(true)
                 .path("/api/v1/auth")
-                .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days()))
+                .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days() * 1000))
                 .finish(),
         )
         .json(AuthDataResult {
             access_token: tokens.0,
-            expires: tokens.2
+            expires: tokens.2 * 1000
         })
 }
 
@@ -229,7 +229,7 @@ pub(super) async fn authorize(
 
     let tokens = db_result.unwrap();
     let _ = clonned_state.redis().add_pair(&tokens.1, &tokens.0, tokens.3);
-    let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64);
+    let expires_time = OffsetDateTime::from_unix_timestamp(tokens.3 as i64 * 1000);
 
     HttpResponse::Ok()
         .cookie(
@@ -237,7 +237,7 @@ pub(super) async fn authorize(
                 .secure(true)
                 .http_only(true)
                 .path("/api/v1/auth")
-                .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days()))
+                .expires(expires_time.unwrap_or(OffsetDateTime::now_utc() + 30.days() * 1000))
                 .finish(),
         )
         .json(AuthDataResult {
