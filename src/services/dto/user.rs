@@ -1,6 +1,6 @@
 use chrono::{NaiveDate, NaiveDateTime};
 use diesel::Insertable;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
 #[derive(Insertable)]
@@ -22,4 +22,9 @@ pub struct LawProfileWithUser {
     pub patronymic: Option<String>,
     pub itn: String,
     pub start_activity_date: NaiveDateTime,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct DeleteLawsRequestResponse {
+    pub uids: Vec<Uuid>,
 }

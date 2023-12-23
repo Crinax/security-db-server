@@ -9,6 +9,7 @@ use actix_web::web;
 
 pub(super) fn configure(_: Arc<Config>) -> impl Fn(&mut web::ServiceConfig) {
     move |cfg| {
-        cfg.service(get::get_laws);
+        cfg.service(get::get_laws)
+            .service(delete::delete);
     }
 }

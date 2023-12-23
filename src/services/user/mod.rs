@@ -6,7 +6,7 @@ use crate::db::{
     orm::schema::{user_profiles, law_profiles, passports},
     Db, DbError, DbProvider,
 };
-use diesel::{insert_into, prelude::*};
+use diesel::{insert_into, prelude::*, delete};
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -15,6 +15,7 @@ pub enum UserServiceError<T> {
     ProfileCreation(T),
     NotFound,
     GetLaws,
+    DeleteLaws,
 }
 
 pub struct UserService {
@@ -91,6 +92,18 @@ impl UserService {
                     })
                     .collect::<Vec<LawProfileWithUser>>()
             )
+        })
+    }
+
+    pub fn delete_laws(&self, law_uids: &[Uuid]) -> Result<(), DbError<UserServiceError<()>>> {
+        self.db.transaction(|conn| {
+            delete(law_profiles::dsl::law_profiles.filter(law_profiles::dsl::uid.eq_any(law_uids)))
+                .execute(conn)
+                .map_err(|err| {
+                    log::error!("{}", err);
+                    UserServiceError::DeleteLaws
+                })?;
+            Ok(())
         })
     }
 
